@@ -1,0 +1,184 @@
+{
+  "nodes": [
+    {
+      "id": "index_html",
+      "label": "Fluxo Entry Point (index.html)",
+      "file_type": "code",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_tsx",
+      "label": "Fluxo Application Entry Module (index.tsx)",
+      "file_type": "code",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "fluxo_sistema",
+      "label": "Fluxo Barbershop Management System",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "fluxo_agenda",
+      "label": "Agenda (Schedule Management)",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "fluxo_financeiro",
+      "label": "Financeiro (Financial Control)",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "fluxo_fidelizacao",
+      "label": "Fidelização (Customer Loyalty)",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_dashboard",
+      "label": "Dashboard UI Animation",
+      "file_type": "image",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\public\\dashboard.gif",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_default_profile_default_profile",
+      "label": "Default Profile Image",
+      "file_type": "image",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\public\\default-profile.webp",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_logo_image",
+      "label": "Fluxo Logo",
+      "file_type": "image",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\public\\logo.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_pwa_pwa_1000x1000_icon",
+      "label": "Fluxo PWA Icon 1000x1000",
+      "file_type": "image",
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\public\\pwa\\pwa-1000x1000.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "index_html",
+      "target": "index_tsx",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "fluxo_sistema",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "fluxo_sistema",
+      "target": "fluxo_agenda",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "fluxo_sistema",
+      "target": "fluxo_financeiro",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "fluxo_sistema",
+      "target": "fluxo_fidelizacao",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "fluxo_pillars",
+      "label": "Fluxo Core Value Proposition Pillars",
+      "nodes": [
+        "fluxo_sistema",
+        "fluxo_agenda",
+        "fluxo_financeiro",
+        "fluxo_fidelizacao"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\matheus\\Desktop\\fluxo\\index.html"
+    }
+  ],
+  "input_tokens": 182935,
+  "output_tokens": 0
+}

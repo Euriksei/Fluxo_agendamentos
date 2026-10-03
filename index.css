@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import "tailwindcss";
+
+@layer base {
+    body {
+        background-color: #0F0F14;
+        color: #FFFFFF;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Bebas Neue', sans-serif;
+        letter-spacing: 0.05em;
+    }
+}
+
+@theme {
+    --color-brand-black: #0F0F14;
+    --color-brand-dark: #1C1C24;
+    
+    --color-brand-blue: #2563EB; 
+    --color-brand-purple: #7C3AED;
+    
+    --color-brand-white: #FFFFFF;
+    --color-brand-gray: #9CA3AF;
+}
+
+@utility font-bebas {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.05em;
+}
+
+@utility gradient-text {
+    background: linear-gradient(to right, #2563EB, #7C3AED);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+@utility gradient-bg {
+    background: linear-gradient(to right, #2563EB, #7C3AED);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0F0F14; 
+}
+::-webkit-scrollbar-thumb {
+    background: #333; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555; 
+}
+
+button, a {
+    cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}

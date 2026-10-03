@@ -1,0 +1,35 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vercel
+
+# Frontend
+.env
+node_modules
+dist
+dist-ssr
+*.local
+package-lock.json
+
+# Backend
+backend/.env
+backend/node_modules
+backend/package-lock.json
+backend/uploads
+backend/*.log

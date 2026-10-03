@@ -1,0 +1,5 @@
+C:\Users\matheus\Desktop\fluxo\index.html
+C:\Users\matheus\Desktop\fluxo\public\dashboard.gif
+C:\Users\matheus\Desktop\fluxo\public\default-profile.webp
+C:\Users\matheus\Desktop\fluxo\public\logo.png
+C:\Users\matheus\Desktop\fluxo\public\pwa\pwa-1000x1000.png
