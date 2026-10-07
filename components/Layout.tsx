@@ -49,12 +49,12 @@ export default function Layout()
                         {user.user.role === "BARBER" && ( <NavLink to="/equipe" label="Equipe" icon="Users" collapsed={collapsed} /> )}
                         {user.user.role === "BARBER" && ( <NavLink to="/assinatura" label="Assinatura" icon="CreditCard" collapsed={collapsed} /> )}
 
-                        <button onClick={logout} className="block md:hidden text-red-400 hover:text-red-300"><LogOut size={18} /></button>
+                        <button onClick={logout} aria-label="Sair" title="Sair" className="block md:hidden text-red-400 hover:text-red-300"><LogOut size={18} /></button>
                     </nav>
                 </div>
 
                 <div className="hidden md:flex items-center justify-center p-4 border-t border-gray-700">
-                    <button onClick={logout} className="flex items-center justify-center gap-2 w-full text-sm text-center text-red-400 hover:text-red-300" >
+                    <button onClick={logout} aria-label="Sair" title="Sair" className="flex items-center justify-center gap-2 w-full text-sm text-center text-red-400 hover:text-red-300" >
                         <LogOut size={18} /> 
                         {!collapsed && "Sair"}
                     </button>

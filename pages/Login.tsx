@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
 import Logo from '@/components/Logo';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import ShapeWaves from '@/components/ui/ShapeWaves';
+import { Button } from '@/components/shadcn/button';
+import { Input } from '@/components/shadcn/input';
+import { Label } from '@/components/shadcn/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/shadcn/card';
 
-export default function Login() 
+export default function Login()
 {
     const { user, login } = useAuth();
 
@@ -21,66 +25,65 @@ export default function Login()
         e.preventDefault();
         setLoading(true);
 
-        try 
+        try
         {
             await login(email, password);
             window.location.href = '/dashboard';
-        } 
-        catch (err) 
+        }
+        catch (err)
         {
             console.error(err);
-        } 
-        finally 
+        }
+        finally
         {
             setLoading(false);
         }
     };
 
     return (
-        <section className="min-h-screen flex items-center justify-center bg-brand-black px-4">
-            <div className="w-full max-w-md">
-                
+        <section className="relative min-h-svh flex items-center justify-center bg-brand-black px-4 py-10 overflow-hidden">
+            <div className="absolute inset-0" aria-hidden="true">
+                <ShapeWaves color="#3F3F52" hoverColor="#7C3AED" backgroundColor="#0F0F14" cellSize={12} glow={0.4} fade={0.3} />
+            </div>
+
+            <div className="relative z-10 w-full max-w-md">
+
                 <Logo variant="full" textVariant="gradient" size="xl" className="flex-col gap-0 mb-8" />
 
-                <div className="bg-brand-dark border border-white/5 rounded-2xl p-8 shadow-2xl">
-                    <div className="mb-8 text-center">
-                        <h1 className="text-3xl font-bold text-white mb-2">
-                            Acessar Plataforma
-                        </h1>
-                        <p className="text-brand-gray text-sm">
-                            Entre com suas credenciais para continuar
-                        </p>
-                    </div>
+                <Card>
+                    <CardHeader className="text-center">
+                        <CardTitle>Acessar Plataforma</CardTitle>
+                        <CardDescription>Entre com suas credenciais para continuar</CardDescription>
+                    </CardHeader>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label className="block text-sm text-brand-gray mb-2">
-                                E-mail
-                            </label>
-                            <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" fullWidth />
-                        </div>
+                    <CardContent>
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                            <div className="grid gap-2">
+                                <Label htmlFor="email">E-mail</Label>
+                                <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />
+                            </div>
 
-                        <div>
-                            <label className="block text-sm text-brand-gray mb-2">
-                                Senha
-                            </label>
-                            <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" fullWidth />
-                        </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="password">Senha</Label>
+                                <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                            </div>
 
-                        <Button type="submit" disabled={loading} variant="primary" fullWidth >
-                            {loading ? 'Entrando...' : 'Entrar'}
-                        </Button>
-                    </form>
+                            <Button type="submit" size="lg" disabled={loading} aria-busy={loading} className="w-full mt-2">
+                                {loading && <Loader2 className="animate-spin" aria-hidden="true" />}
+                                {loading ? 'Entrando...' : 'Entrar'}
+                            </Button>
+                        </form>
+                    </CardContent>
 
-                    <div className="mt-6 text-center">
+                    <CardFooter className="justify-center">
                         <p className="text-sm text-brand-gray">
                             Ainda não possui conta?{' '}
-                            <a href="/registro" className="gradient-text font-bold" >
+                            <a href="/registro" className="gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60">
                                 Criar conta
                             </a>
                         </p>
-                    </div>
-                </div>
+                    </CardFooter>
+                </Card>
             </div>
         </section>
     );

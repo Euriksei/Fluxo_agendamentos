@@ -513,7 +513,7 @@ export default function Agendar()
                         </button>
                         
                         <h2 className="text-xl font-semibold text-white mb-2">Escolha o Horário</h2>
-                        <p className="text-brand-gray mb-4 capitalize">{formatarDataCompleta(selectedDate)}</p>
+                        <p className="text-brand-gray mb-4 first-letter:uppercase">{formatarDataCompleta(selectedDate)}</p>
                         
                         {slotsLoading 
                         ? 
@@ -623,7 +623,7 @@ export default function Agendar()
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-brand-gray">Data</span>
-                                <span className="text-white capitalize">{formatarDataCompleta(selectedDate)}</span>
+                                <span className="inline-block text-white first-letter:uppercase">{formatarDataCompleta(selectedDate)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-brand-gray">Horário</span>
@@ -672,7 +672,7 @@ export default function Agendar()
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-brand-gray">Data</span>
-                                    <span className="text-white capitalize">{formatarDataCompleta(selectedDate)}</span>
+                                    <span className="inline-block text-white first-letter:uppercase">{formatarDataCompleta(selectedDate)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-brand-gray">Horário</span>

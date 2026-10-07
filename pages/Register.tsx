@@ -1,17 +1,23 @@
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
 import Logo from '@/components/Logo';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import ShapeWaves from '@/components/ui/ShapeWaves';
+import { Button } from '@/components/shadcn/button';
+import { Input } from '@/components/shadcn/input';
+import { Label } from '@/components/shadcn/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/shadcn/card';
 
-export default function Register() 
+export default function Register()
 {
     const { login, register, setError } = useAuth();
 
     const [loading, setLoading] = useState(false);
 
     const [form, setForm] = useState({ name: '', shop: '', email: '', password: '', confPassword: '', role: 'BARBER' });
+
+    const passwordMismatch = form.confPassword.length > 0 && form.password !== form.confPassword;
 
     const handleChange = (e) => { const { name, value } = e.target; setForm((prev) => ({ ...prev, [name]: value })); };
 
@@ -22,7 +28,7 @@ export default function Register()
         setError(null);
         setLoading(true);
 
-        try 
+        try
         {
             if (form.password !== form.confPassword)
             {
@@ -34,85 +40,84 @@ export default function Register()
 
             const user = await login(form.email, form.password);
             if (user) window.location.href = '/dashboard';
-        } 
-        catch (err) 
+        }
+        catch (err)
         {
             console.error(err);
-        } 
-        finally 
+        }
+        finally
         {
             setLoading(false);
         }
     };
 
     return (
-        <section className="min-h-screen flex items-center justify-center bg-brand-black px-4">
-            <div className="w-full max-w-xl">
-                
+        <section className="relative min-h-svh flex items-center justify-center bg-brand-black px-4 py-10 overflow-hidden">
+            <div className="absolute inset-0" aria-hidden="true">
+                <ShapeWaves color="#3F3F52" hoverColor="#7C3AED" backgroundColor="#0F0F14" cellSize={12} glow={0.4} fade={0.3} />
+            </div>
+
+            <div className="relative z-10 w-full max-w-xl">
+
                 <Logo variant="full" textVariant="gradient" size="xl" className="flex-col gap-0 mb-6" />
 
-                <div className="bg-brand-dark border border-white/5 rounded-2xl p-8 shadow-2xl">
-                    <div className="mb-8 text-center">
-                        <h1 className="text-3xl font-bold text-white mb-2">
-                            Criar Conta
-                        </h1>
-                        <p className="text-brand-gray text-sm">
-                            Registre-se para gerenciar seus dados
-                        </p>
-                    </div>
+                <Card>
+                    <CardHeader className="text-center">
+                        <CardTitle>Criar Conta</CardTitle>
+                        <CardDescription>Registre-se para gerenciar seus dados</CardDescription>
+                    </CardHeader>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-brand-gray mb-1">
-                                Seu Nome
-                            </label>
-                            <Input name="name" type="text" maxLength={50} required value={form.name} onChange={handleChange} placeholder="João da Silva" fullWidth />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm text-brand-gray mb-1">
-                                Nome do Negócio
-                            </label>
-                            <Input name="shop" type="text" maxLength={30} required value={form.shop} onChange={handleChange} placeholder="Barber Shop" fullWidth />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm text-brand-gray mb-1">
-                                E-mail
-                            </label>
-                            <Input name="email" type="email" maxLength={100} required value={form.email} onChange={handleChange} placeholder="seu@email.com" fullWidth />
-                        </div>
-
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1">
-                                <label className="block text-sm text-brand-gray mb-1">
-                                    Senha
-                                </label>
-                                <Input name="password" type="password" required value={form.password} onChange={handleChange} placeholder="••••••••" fullWidth />
+                    <CardContent>
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Seu Nome</Label>
+                                <Input id="name" name="name" type="text" autoComplete="name" maxLength={50} required value={form.name} onChange={handleChange} placeholder="João da Silva" />
                             </div>
 
-                            <div className="flex-1">
-                                <label className="block text-sm text-brand-gray mb-1">
-                                    Confirmar Senha
-                                </label>
-                                <Input name="confPassword" type="password" required value={form.confPassword} onChange={handleChange} placeholder="••••••••" fullWidth />
+                            <div className="grid gap-2">
+                                <Label htmlFor="shop">Nome do Negócio</Label>
+                                <Input id="shop" name="shop" type="text" autoComplete="organization" maxLength={30} required value={form.shop} onChange={handleChange} placeholder="Barber Shop" />
                             </div>
-                        </div>
 
-                        <Button type="submit" disabled={loading} variant="primary" fullWidth >
-                            {loading ? 'Registrando...' : 'Registrar'}
-                        </Button>
-                    </form>
+                            <div className="grid gap-2">
+                                <Label htmlFor="email">E-mail</Label>
+                                <Input id="email" name="email" type="email" autoComplete="email" maxLength={100} required value={form.email} onChange={handleChange} placeholder="seu@email.com" />
+                            </div>
 
-                    <div className="mt-6 text-center">
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="password">Senha</Label>
+                                    <Input id="password" name="password" type="password" autoComplete="new-password" required value={form.password} onChange={handleChange} placeholder="••••••••" />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="confPassword">Confirmar Senha</Label>
+                                    <Input id="confPassword" name="confPassword" type="password" autoComplete="new-password" required value={form.confPassword} onChange={handleChange} placeholder="••••••••" aria-invalid={passwordMismatch || undefined} aria-describedby={passwordMismatch ? 'confPassword-error' : undefined} />
+                                </div>
+                            </div>
+
+                            {passwordMismatch && (
+                                <p id="confPassword-error" role="alert" className="-mt-1 text-sm text-red-400">
+                                    As senhas não coincidem
+                                </p>
+                            )}
+
+                            <Button type="submit" size="lg" disabled={loading} aria-busy={loading} className="w-full mt-2">
+                                {loading && <Loader2 className="animate-spin" aria-hidden="true" />}
+                                {loading ? 'Registrando...' : 'Registrar'}
+                            </Button>
+                        </form>
+                    </CardContent>
+
+                    <CardFooter className="justify-center">
                         <p className="text-sm text-brand-gray">
                             Já possui conta?{' '}
-                            <a href="/login" className="gradient-text font-bold" >
+                            <a href="/login" className="gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60">
                                 Fazer login
                             </a>
                         </p>
-                    </div>
-                </div>
+                    </CardFooter>
+                </Card>
             </div>
         </section>
     );

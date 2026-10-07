@@ -52,9 +52,12 @@ export function AuthProvider({ children })
         });
 
         localStorage.setItem('token', data.token);
-        setUser(data.user);
-        return data.user;
-    }, [publicRequest]);
+
+        // /api/auth/me returns { user, subscription }, the shape the rest of the app reads (user.user.*)
+        const me = await authRequest('/api/auth/me');
+        setUser(me);
+        return me;
+    }, [publicRequest, authRequest]);
 
     const logout = useCallback(() => 
     {
