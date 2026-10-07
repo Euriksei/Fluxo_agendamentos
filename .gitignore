@@ -25,12 +25,10 @@ node_modules
 dist
 dist-ssr
 *.local
-package-lock.json
 
 # Backend
 backend/.env
 backend/node_modules
-backend/package-lock.json
 backend/uploads
 backend/*.log
 
