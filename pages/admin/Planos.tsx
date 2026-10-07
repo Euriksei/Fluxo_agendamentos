@@ -19,7 +19,7 @@ export default function AdminPlanos()
 
     const [modalAberto, setModalAberto] = useState(false);
     const [editandoId, setEditandoId] = useState(null);
-    const [formData, setFormData] = useState({ name: '', slug: '', description: '', about: '', price: '', maxEmployees: '', features: '' });
+    const [formData, setFormData] = useState({ name: '', slug: '', description: '', about: '', price: '', maxEmployees: '', features: [] as string[] });
     const [saving, setSaving] = useState(false);
 
     useEffect(() => { loadPlans(); }, []);

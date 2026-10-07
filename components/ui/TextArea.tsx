@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface TextAreaProps extends React.TextAreaHTMLAttributes<HTMLTextAreaElement> 
+interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> 
 {
     variant?: 'default' | 'outline' | 'ghost';
     fullWidth?: boolean;

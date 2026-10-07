@@ -20,7 +20,7 @@ export default function Horarios()
     const [modalTipo, setModalTipo] = useState('agenda');
     const [editandoId, setEditandoId] = useState(null);
 
-    const [formAgenda, setFormAgenda] = useState({ dayOfWeek: 1, startTime: '09:00', endTime: '18:00', lunchStart: '12:00', lunchEnd: '13:00', slotDuration: 30 });
+    const [formAgenda, setFormAgenda] = useState({ dayOfWeek: 1, startTime: '09:00', endTime: '18:00', lunchStart: '12:00', lunchEnd: '13:00', hasLunch: false, slotDuration: 30 });
 
     const [formBloqueio, setFormBloqueio] = useState({ blockDate: '', blockDateEnd: '', startTime: '', endTime: '', reason: '', diaInteiro: true });
 
@@ -36,7 +36,7 @@ export default function Horarios()
         else 
         {
             setEditandoId(null);
-            setFormAgenda({ dayOfWeek: 1, startTime: '09:00', endTime: '18:00', lunchStart: '12:00', lunchEnd: '13:00', slotDuration: 30 });
+            setFormAgenda({ dayOfWeek: 1, startTime: '09:00', endTime: '18:00', lunchStart: '12:00', lunchEnd: '13:00', hasLunch: false, slotDuration: 30 });
         }
         setModalTipo('agenda');
         setModalAberto(true);
@@ -53,7 +53,7 @@ export default function Horarios()
     {
         setModalAberto(false);
         setEditandoId(null);
-        setFormAgenda({ dayOfWeek: 1, startTime: '09:00', endTime: '18:00', slotDuration: 30 });
+        setFormAgenda({ dayOfWeek: 1, startTime: '09:00', endTime: '18:00', lunchStart: '12:00', lunchEnd: '13:00', hasLunch: false, slotDuration: 30 });
         setFormBloqueio({ blockDate: '', blockDateEnd: '', startTime: '', endTime: '', reason: '', diaInteiro: true });
     };
 

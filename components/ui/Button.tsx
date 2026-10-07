@@ -3,13 +3,14 @@ import React from 'react';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 {
     variant?: 'primary' | 'secondary' | 'outline' | 'destructive';
+    size?: 'sm' | 'md' | 'lg';
     fullWidth?: boolean;
     children: React.ReactNode;
 }
 
-const Button: React.FC<ButtonProps> = ({ variant = 'primary', fullWidth = false, children, className = '', ...props }) => 
+const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md', fullWidth = false, children, className = '', ...props }) => 
 {
-    const baseStyles = `px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-2 
+    const baseStyles = `rounded-lg font-semibold transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-2 
         focus:ring-offset-2 focus:ring-brand-blue ring-offset-brand-black cursor-pointer`;
     
     const variants = 
@@ -20,8 +21,15 @@ const Button: React.FC<ButtonProps> = ({ variant = 'primary', fullWidth = false,
         destructive: "bg-red-500 text-white hover:bg-red-600",
     };
 
+    const sizes =
+    {
+        sm: "px-4 py-2 text-sm",
+        md: "px-6 py-3",
+        lg: "px-8 py-4 text-lg",
+    };
+
     return (
-        <button className={`${baseStyles} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`} {...props}>
+        <button className={`${baseStyles} ${sizes[size]} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`} {...props}>
             {children}
         </button>
     );
