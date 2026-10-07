@@ -167,6 +167,7 @@ router.post('/', async (req, res) =>
     }
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -256,6 +257,7 @@ router.put('/:id', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });

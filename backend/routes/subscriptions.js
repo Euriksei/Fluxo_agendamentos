@@ -101,6 +101,7 @@ router.post('/webhook', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -248,6 +249,7 @@ router.post('/', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -334,6 +336,7 @@ router.post('/credit-card', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -392,6 +395,7 @@ router.post('/trial', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -515,6 +519,7 @@ router.post('/convert-trial', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -573,6 +578,7 @@ router.put('/me', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -633,6 +639,7 @@ router.delete('/me', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -863,6 +870,7 @@ router.post('/me/sync', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });

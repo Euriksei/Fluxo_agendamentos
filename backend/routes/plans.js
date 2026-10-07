@@ -12,7 +12,7 @@ router.get('/', async (req, res) =>
     try 
     {
         const [plans] = await pool.query('SELECT * FROM plans WHERE isActive = TRUE ORDER BY price ASC');
-        const plansWithFeatures = plans.map(plan => ({ ...plan, features: Array.isArray(plan.features) ? plan.features : [] }));
+        const plansWithFeatures = plans.map(plan => ({ ...plan, features: typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []) }));
         res.json(plansWithFeatures);
     } 
     catch (error) 
@@ -38,7 +38,7 @@ router.get('/me', authenticateToken, async (req, res) =>
 
             return res.json({
                 status: 'NONE',
-                plan: basicPlan[0] ? { ...basicPlan[0], features: Array.isArray(basicPlan[0].features) ? basicPlan[0].features : [] } : null,
+                plan: basicPlan[0] ? { ...basicPlan[0], features: typeof basicPlan[0].features === 'string' ? JSON.parse(basicPlan[0].features) : (basicPlan[0].features || []) } : null,
                 isLimited: true
             });
         }

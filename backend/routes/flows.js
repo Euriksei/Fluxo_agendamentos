@@ -151,6 +151,7 @@ router.put('/:id', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });

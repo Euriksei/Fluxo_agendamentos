@@ -220,7 +220,7 @@ router.post('/plans', async (req, res) =>
             featuresJson = '[]';
         }
 
-        const [result] = await pool.query(`INSERT INTO plans (name, slug, description, about, price, maxEmployees, features) VALUES (?, ?, ?, ?, ?, ?)`,
+        const [result] = await pool.query(`INSERT INTO plans (name, slug, description, about, price, maxEmployees, features) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [name, slug, description, about, parsedPrice, maxEmployees, featuresJson]);
 
         const [plan] = await pool.query('SELECT * FROM plans WHERE id = ?', [result.insertId]);

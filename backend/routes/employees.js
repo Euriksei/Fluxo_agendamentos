@@ -424,6 +424,7 @@ router.put('/:id/services', async (req, res) => {
         console.error('Update employee services error:', error);
         res.status(500).json({ error: 'Erro ao atualizar serviços' });
     } finally {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });

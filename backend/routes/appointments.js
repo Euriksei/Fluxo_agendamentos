@@ -124,6 +124,7 @@ router.post('/', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -339,6 +340,7 @@ router.patch('/:id/status', async (req, res) =>
     }
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -454,6 +456,7 @@ router.patch('/:id/reschedule', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });

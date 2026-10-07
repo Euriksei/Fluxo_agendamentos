@@ -278,6 +278,7 @@ router.put('/me', async (req, res) =>
     } 
     finally 
     {
+        await connection.rollback().catch(() => {});
         connection.release();
     }
 });
@@ -309,8 +310,8 @@ router.put('/users/:id', async (req, res) =>
         await connection.beginTransaction();
 
         const { id } = req.params;
-        const { name, email, cpf, role } = req.body;
-        if (!name || !email || !cpf || !role) return res.status(400).json({ error: 'Nome, email, CPF e perfil são obrigatórios' });
+        const { name, email, role } = req.body;
+        if (!name || !email || !role) return res.status(400).json({ error: 'Nome, email e perfil são obrigatórios' });
 
         const [existingUser] = await connection.query('SELECT id FROM users WHERE id = ?', [id]);
         if (existingUser.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -318,18 +319,23 @@ router.put('/users/:id', async (req, res) =>
         const [emailInUse] = await connection.query('SELECT id FROM users WHERE email = ? AND id <> ?', [email, id]);
         if (emailInUse.length > 0) return res.status(400).json({ error: 'Email já está em uso por outro usuário' });
 
-        await connection.query('UPDATE users SET name = ?, email = ?, cpf = ?, role = ? WHERE id = ?', [name, email, cpf, role, id]);
+        await connection.query('UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?', [name, email, role, id]);
 
-        const [users] = await connection.query('SELECT id, name, email, cpf, role, created_at FROM users WHERE id = ?', [id]);
+        const [users] = await connection.query('SELECT id, name, email, role, created_at FROM users WHERE id = ?', [id]);
 
         await connection.commit();
 
         res.json(users[0]);
     } 
-    catch (error) 
+    catch (error)
     {
         console.error('Update user error:', error);
         res.status(500).json({ error: 'Erro ao atualizar usuário' });
+    }
+    finally
+    {
+        await connection.rollback().catch(() => {});
+        connection.release();
     }
 });
 
