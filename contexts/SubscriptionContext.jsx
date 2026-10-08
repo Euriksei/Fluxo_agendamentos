@@ -11,6 +11,7 @@ export function SubscriptionProvider({ children })
     const { authFetch, loading, setLoading } = useApi();
 
     const [subscription, setSubscription] = useState(null);
+    const userId = user?.user?.id;
     const [plans, setPlans] = useState([]);
     const [payments, setPayments] = useState([]);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -20,7 +21,7 @@ export function SubscriptionProvider({ children })
     {
         const loadSubscription = async () => 
         {
-            if (!user) 
+            if (!userId) 
             {
                 setSubscription(null);
                 setLoading(false);
@@ -47,7 +48,7 @@ export function SubscriptionProvider({ children })
         };
 
         loadSubscription();
-    }, [user]);
+    }, [userId]);
 
     const fetchPlans = async () => 
     {

@@ -6,7 +6,7 @@ import { Copy, Check, Download, QrCode, Calendar, Clock, DollarSign, TrendingUp,
 
 import Button from '@/components/ui/Button';
 
-import { formatarMoeda, formatarData, formatarDataCurta } from '@/utils';
+import { formatarMoeda, formatarData, formatarDataCurta, hojeLocal } from '@/utils';
 import { STATUS_CONFIG, SUBSCRIPTION_STATUS_CONFIG, PLAN_FEATURE_LABELS } from '@/types';
 
 export default function Dashboard() 
@@ -25,8 +25,10 @@ export default function Dashboard()
     const [recentFlows, setRecentFlows] = useState([]);
     const [stats, setStats] = useState({ todayCount: 0, todayRevenue: 0, weekCount: 0, weekRevenue: 0, monthCount: 0, monthRevenue: 0, pendingCount: 0 });
 
+    const userId = user?.user?.id;
     const slug = user?.user.slug || user?.user.ownerSlug;
-    const bookingLink = `https://fluxoagendamentos.com.br/agendar/${slug}`;
+    const publicUrl = (import.meta.env.VITE_PUBLIC_URL || window.location.origin).replace(/\/+$/, '');
+    const bookingLink = `${publicUrl}/agendar/${slug}`;
 
     const statusConfig = SUBSCRIPTION_STATUS_CONFIG[subscription?.status] || SUBSCRIPTION_STATUS_CONFIG.NONE;
     const StatusIcon = statusConfig.icon;
@@ -39,7 +41,7 @@ export default function Dashboard()
             {
                 setLoading(true);
 
-                const hoje = new Date().toISOString().split('T')[0];
+                const hoje = hojeLocal();
                 const todayData = await getBarberAppointments(hoje);
 
                 if (todayData) 
@@ -47,8 +49,7 @@ export default function Dashboard()
                     setTodayAppointments(todayData);
                     
                     const completed = todayData.filter(a => a.status === 'COMPLETED');
-                    const pending = todayData.filter(a => a.status === 'PENDING');
-                    setStats(prev => ({ ...prev, todayCount: todayData.length, todayRevenue: completed.reduce((sum, a) => sum + (a.price || 0), 0), pendingCount: pending.length }));
+                    setStats(prev => ({ ...prev, todayCount: todayData.length, todayRevenue: completed.reduce((sum, a) => sum + (a.price || 0), 0) }));
                 }
 
                 const upcomingData = await getBarberAppointments();
@@ -66,6 +67,9 @@ export default function Dashboard()
                         return false;
                     }).slice(0, 5);
                     setUpcomingAppointments(upcoming);
+
+                    const pendingCount = upcomingData.filter(a => a.status === 'PENDING' && String(a.appointmentDate).split('T')[0] >= hoje).length;
+                    setStats(prev => ({ ...prev, pendingCount }));
 
                     const weekStart = new Date(now);
                     weekStart.setDate(now.getDate() - now.getDay());
@@ -94,10 +98,10 @@ export default function Dashboard()
             finally { setLoading(false); }
         };
 
-        if (user) {
+        if (userId) {
             loadDashboard();
         }
-    }, [user, getBarberAppointments, getFlows]);
+    }, [userId, getBarberAppointments, getFlows]);
 
     const handleCopyLink = async () => 
     {
@@ -203,7 +207,7 @@ export default function Dashboard()
 
             <div className="bg-linear-to-br from-brand-purple/20 to-brand-blue/20 border border-brand-purple/30 rounded-xl p-6">
                 <div className="flex flex-col lg:flex-row justify-between gap-6">
-                    <div>
+                    <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-3">
                             <QrCode size={24} className="text-brand-purple" />
                             <h2 className="text-lg md:text-xl font-bold">Compartilhe seu link de agendamento</h2>
@@ -213,11 +217,11 @@ export default function Dashboard()
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                            <div onClick={() => window.open(bookingLink, '_blank', 'noopener,noreferrer')} className="flex-1 bg-white/10 border border-white/30 
-                                    rounded-lg px-4 py-3 flex items-center gap-3 cursor-pointer">
-                                <ExternalLink size={18} className="shrink-0" />
+                            <a href={bookingLink} target="_blank" rel="noopener noreferrer" title={bookingLink} className="flex-1 min-w-0 bg-white/10 border border-white/30 
+                                    rounded-lg px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple">
+                                <ExternalLink size={18} className="shrink-0" aria-hidden="true" />
                                 <span className="text-sm truncate">{bookingLink}</span>
-                            </div>
+                            </a>
                             <Button onClick={handleCopyLink} className="shrink-0">
                                 {copied 
                                 ? 

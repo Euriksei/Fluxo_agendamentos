@@ -22,6 +22,10 @@ function DataLoader({ children })
     const { getFlows } = useFlows();
     const [initialLoading, setInitialLoading] = useState(false);
 
+    // Depend on stable primitives: `user` is a new object on every setUser (StrictMode double /me, login, profile update), which re-ran this load.
+    const userId = user?.user?.id;
+    const role = user?.user?.role;
+
     useEffect(() => 
     {
         if (!isAuthenticated) return;
@@ -29,8 +33,6 @@ function DataLoader({ children })
         const loadInitialData = async () => 
         {
             setInitialLoading(true);
-
-            const role = user.user.role;
 
             try 
             {
@@ -48,7 +50,7 @@ function DataLoader({ children })
         };
 
         loadInitialData();
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, userId, role]);
 
     return children;
 }

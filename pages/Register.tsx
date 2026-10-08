@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
@@ -12,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 export default function Register()
 {
     const { login, register, setError } = useAuth();
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
 
@@ -39,7 +41,7 @@ export default function Register()
             await register(form);
 
             const user = await login(form.email, form.password);
-            if (user) window.location.href = '/dashboard';
+            if (user) navigate('/dashboard', { replace: true });
         }
         catch (err)
         {

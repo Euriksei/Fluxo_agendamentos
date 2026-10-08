@@ -16,10 +16,10 @@ export function NavLink({ to, label, icon, collapsed }: NavLinkProps)
     const IconComponent = Icons[icon] as LucideIcon;
 
     return (
-        <OrNavLink to={to} className={({ isActive }) => `${baseClass} ${collapsed && "justify-center"} 
+        <OrNavLink to={to} aria-label={label} title={collapsed ? label : undefined} className={({ isActive }) => `${baseClass} ${collapsed && "justify-center"} 
                 ${isActive ? "text-brand-blue gradient-text font-bold" : "hover:bg-gray-800"}`}>
                     
-            {IconComponent && <IconComponent size={20} className={`${collapsed ? "mr-0" : "mr-4"}`} />}
+            {IconComponent && <IconComponent size={20} aria-hidden="true" className={`${collapsed ? "mr-0" : "mr-4"}`} />}
 
             {!collapsed && <span className="hidden md:block">{label}</span>}
         </OrNavLink>

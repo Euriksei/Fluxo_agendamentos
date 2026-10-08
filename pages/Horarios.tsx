@@ -8,7 +8,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 
 import { DIAS_SEMANA } from '@/types';
-import { formatarData, formatarHora } from '@/utils';
+import { formatarData, formatarHora, hojeLocal } from '@/utils';
 
 export default function Horarios() 
 {
@@ -417,13 +417,13 @@ export default function Horarios()
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm text-brand-gray mb-1">Data Início</label>
-                                            <Input type="date" value={formBloqueio.blockDate} min={new Date().toISOString().split('T')[0]} fullWidth required 
+                                            <Input type="date" value={formBloqueio.blockDate} min={hojeLocal()} fullWidth required 
                                                 onChange={e => setFormBloqueio({ ...formBloqueio, blockDate: e.target.value, blockDateEnd: formBloqueio.blockDateEnd && 
                                                     formBloqueio.blockDateEnd < e.target.value ? e.target.value : formBloqueio.blockDateEnd })} />
                                         </div>
                                         <div>
                                             <label className="block text-sm text-brand-gray mb-1">Data Fim <span className="text-brand-gray/60">(opcional)</span></label>
-                                            <Input type="date" value={formBloqueio.blockDateEnd} min={formBloqueio.blockDate || new Date().toISOString().split('T')[0]} fullWidth
+                                            <Input type="date" value={formBloqueio.blockDateEnd} min={formBloqueio.blockDate || hojeLocal()} fullWidth
                                                 onChange={e => setFormBloqueio({ ...formBloqueio, blockDateEnd: e.target.value })} />
                                         </div>
                                     </div>

@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import TextArea from '@/components/ui/TextArea';
 
-import { formatarDataCompleta, formatarMoeda, formatarTelefone } from '@/utils';
+import { formatarDataCompleta, formatarMoeda, formatarTelefone, formatDateLocal } from '@/utils';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -29,6 +29,7 @@ export default function Agendar()
     const [barber, setBarber] = useState(null);
     const [services, setServices] = useState([]);
     const [professionals, setProfessionals] = useState([]);
+    const [loadingProfessionals, setLoadingProfessionals] = useState(false);
     const [barberAgenda, setBarberAgenda] = useState([]);
     const [blockedDates, setBlockedDates] = useState([]);
     
@@ -79,6 +80,8 @@ export default function Agendar()
 
         const loadProfessionals = async () => 
         {
+            setLoadingProfessionals(true);
+
             try 
             {
                 const employeesData = await getBarberEmployeesServices(selectedService.id);
@@ -87,6 +90,10 @@ export default function Agendar()
             catch (err) 
             {
                 console.error(err);
+            }
+            finally 
+            {
+                setLoadingProfessionals(false);
             }
         };
 
@@ -151,7 +158,7 @@ export default function Agendar()
     }, [selectedDate, selectedService, selectedProfessional, getAvailableSlots]);
 
     const barberWorksOnDay = (dayOfWeek) => { return barberAgenda.some(a => a.dayOfWeek === dayOfWeek && a.isActive); };
-    const isDateBlocked = (date) => { const dateStr = date.toISOString().split('T')[0]; return blockedDates.includes(dateStr); };
+    const isDateBlocked = (date) => { const dateStr = formatDateLocal(date); return blockedDates.includes(dateStr); };
 
     const getDiasDoMes = () => 
     {
@@ -228,7 +235,7 @@ export default function Agendar()
 
     const selectDate = (date) => 
     {
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = formatDateLocal(date);
         setSelectedDate(dateStr);
         setSelectedSlot(null);
         setStep(4);
@@ -450,7 +457,9 @@ export default function Agendar()
                         (
                             <div className="text-center py-12 bg-brand-dark rounded-lg">
                                 <Users size={48} className="mx-auto text-brand-gray mb-4" />
-                                <p className="text-brand-gray">Carregando profissionais...</p>
+                                <p className="text-brand-gray" role="status">
+                                    {loadingProfessionals ? 'Carregando profissionais...' : 'Nenhum profissional disponível para este serviço.'}
+                                </p>
                             </div>
                         )}
                     </div>
@@ -466,13 +475,13 @@ export default function Agendar()
                         
                         <div className="bg-brand-dark rounded-lg p-6">
                             <div className="flex justify-between items-center mb-6">
-                                <button onClick={mesAnterior} className="p-2 hover:bg-white/10 rounded cursor-pointer">
+                                <button onClick={mesAnterior} aria-label="Mês anterior" title="Mês anterior" className="p-2 hover:bg-white/10 rounded cursor-pointer">
                                     <ChevronLeft size={20} className="text-white" />
                                 </button>
                                 <h3 className="text-lg font-semibold text-white">
                                     {MESES[mesAtual.getMonth()]} {mesAtual.getFullYear()}
                                 </h3>
-                                <button onClick={proximoMes} className="p-2 hover:bg-white/10 rounded cursor-pointer">
+                                <button onClick={proximoMes} aria-label="Próximo mês" title="Próximo mês" className="p-2 hover:bg-white/10 rounded cursor-pointer">
                                     <ChevronRight size={20} className="text-white" />
                                 </button>
                             </div>
@@ -560,37 +569,37 @@ export default function Agendar()
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm text-brand-gray mb-2">
-                                    <User size={14} className="inline mr-1" />
+                                <label htmlFor="cliente-nome" className="block text-sm text-brand-gray mb-2">
+                                    <User size={14} aria-hidden="true" className="inline mr-1" />
                                     Nome completo *
                                 </label>
-                                <Input type="text" value={clientData.name} placeholder="Seu nome" fullWidth required
+                                <Input id="cliente-nome" type="text" autoComplete="name" value={clientData.name} placeholder="Seu nome" fullWidth required
                                     onChange={e => handleClientDataChange('name', e.target.value)} />
                             </div>
 
                             <div>
-                                <label className="block text-sm text-brand-gray mb-2">
-                                    <Mail size={14} className="inline mr-1" />
+                                <label htmlFor="cliente-email" className="block text-sm text-brand-gray mb-2">
+                                    <Mail size={14} aria-hidden="true" className="inline mr-1" />
                                     Email *
                                 </label>
-                                <Input type="email" value={clientData.email} placeholder="seu@email.com" fullWidth required
+                                <Input id="cliente-email" type="email" autoComplete="email" value={clientData.email} placeholder="seu@email.com" fullWidth required
                                     onChange={e => handleClientDataChange('email', e.target.value)} />
                             </div>
 
                             <div>
-                                <label className="block text-sm text-brand-gray mb-2">
-                                    <Phone size={14} className="inline mr-1" />
+                                <label htmlFor="cliente-telefone" className="block text-sm text-brand-gray mb-2">
+                                    <Phone size={14} aria-hidden="true" className="inline mr-1" />
                                     Telefone/WhatsApp *
                                 </label>
-                                <Input type="tel"value={clientData.phone} placeholder="(00) 00000-0000" fullWidth required
+                                <Input id="cliente-telefone" type="tel" autoComplete="tel" value={clientData.phone} placeholder="(00) 00000-0000" fullWidth required
                                     onChange={e => handleClientDataChange('phone', e.target.value)} />
                             </div>
 
                             <div>
-                                <label className="block text-sm text-brand-gray mb-2">
+                                <label htmlFor="cliente-obs" className="block text-sm text-brand-gray mb-2">
                                     Observações (opcional)
                                 </label>
-                                <TextArea value={clientData.notes} placeholder="Alguma observação para o profissional?" fullWidth required rows={3}
+                                <TextArea id="cliente-obs" value={clientData.notes} placeholder="Alguma observação para o profissional?" fullWidth rows={3}
                                     onChange={e => handleClientDataChange('notes', e.target.value)} />
                             </div>
 

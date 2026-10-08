@@ -25,6 +25,9 @@ export const formatDateLocal = (date) =>
     return `${year}-${month}-${day}`;
 };
 
+// Today's date (YYYY-MM-DD) in the user's local timezone; toISOString() would use UTC and roll over early in the evening.
+export const hojeLocal = () => formatDateLocal(new Date());
+
 export const formatarHora = (time) => 
 {
     if (!time) return '-';
@@ -46,7 +49,7 @@ export const isAppointmentDone = (appointment) =>
     const endTime = appointment.endTime?.slice(0, 5) || '23:59';
  
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = formatDateLocal(now);
     const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
  
     if (aptDate < todayStr) return true;

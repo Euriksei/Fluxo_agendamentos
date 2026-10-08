@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
@@ -12,13 +13,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 export default function Login()
 {
     const { user, login } = useAuth();
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    useEffect(() => { if (user) window.location.href = '/dashboard'; }, [user]);
+    useEffect(() => { if (user) navigate('/dashboard', { replace: true }); }, [user, navigate]);
 
     const handleSubmit = async (e) =>
     {
@@ -28,7 +30,7 @@ export default function Login()
         try
         {
             await login(email, password);
-            window.location.href = '/dashboard';
+            navigate('/dashboard', { replace: true });
         }
         catch (err)
         {

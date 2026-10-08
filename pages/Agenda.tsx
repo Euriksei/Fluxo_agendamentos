@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 
-import { formatarMoeda, formatarData, formatarDataCompleta, formatDateLocal, formatarTelefone, isAppointmentDone } from '@/utils';
+import { formatarMoeda, formatarData, formatarDataCompleta, formatDateLocal, hojeLocal, formatarTelefone, isAppointmentDone } from '@/utils';
 import { DIAS_SEMANA_SHORT, MESES, STATUS_CONFIG } from '@/types';
 
 export default function Agenda() 
@@ -23,7 +23,7 @@ export default function Agenda()
     const [filtroData, setFiltroData] = useState('');
     const [filtroBarbeiro, setFiltroBarbeiro] = useState('');
 
-    const [dataSelecionada, setDataSelecionada] = useState(new Date().toISOString().split('T')[0]);
+    const [dataSelecionada, setDataSelecionada] = useState(hojeLocal);
     
     const [mesAtual, setMesAtual] = useState(new Date());
 

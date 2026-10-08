@@ -61,7 +61,7 @@ export default function Layout()
                 </div>
             </aside>
 
-            <main className="min-h-screen flex-1 bg-linear-to-br from-brand-black via-brand-dark to-brand-black text-white p-8 py-16 md:px-48">
+            <main className="min-h-screen flex-1 min-w-0 bg-linear-to-br from-brand-black via-brand-dark to-brand-black text-white p-8 py-16 md:px-48">
                 <Outlet />
             </main>
         </div>
