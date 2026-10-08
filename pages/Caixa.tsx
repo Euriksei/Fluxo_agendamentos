@@ -143,7 +143,7 @@ export default function Caixa()
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm text-brand-gray">Saldo</span>
                         </div>
-                        <p className={`text-2xl font-bold text-blue-600 ${saldo > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-2xl font-bold ${saldo > 0 ? 'text-green-500' : saldo < 0 ? 'text-red-500' : 'text-white'}`}>
                             {formatarMoeda(saldo)}
                         </p>
                     </div>

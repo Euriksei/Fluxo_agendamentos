@@ -2,6 +2,12 @@
 @import "tailwindcss";
 
 @layer base {
+    /* Dark fallback on the root so any unpainted area (resize gutter, overscroll, slow first frame) stays dark instead of gray/white. */
+    html {
+        background-color: #0F0F14;
+        color-scheme: dark;
+    }
+
     body {
         background-color: #0F0F14;
         color: #FFFFFF;

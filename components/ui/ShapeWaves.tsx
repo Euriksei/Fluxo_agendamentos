@@ -432,6 +432,7 @@ export default function ShapeWaves({
     let bounds: DOMRect | null = null;
     let unsubscribeGpuError: (() => void) | undefined;
     let resizeObserver: ResizeObserver | undefined;
+    let resizeFrame = 0;
     let visibilityObserver: IntersectionObserver | undefined;
     let wakeRenderer = () => {};
     const pointer = { x: 0, y: 0, at: 0, inside: false };
@@ -492,6 +493,7 @@ export default function ShapeWaves({
       if (frameId) cancelAnimationFrame(frameId);
       frameId = 0;
       resizeObserver?.disconnect();
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
       visibilityObserver?.disconnect();
       unsubscribeGpuError?.();
       applySettingsRef.current = () => {};
@@ -820,7 +822,14 @@ export default function ShapeWaves({
           wakeRenderer();
         };
 
-        resizeObserver = new ResizeObserver(resize);
+        // Coalesce ResizeObserver bursts (window drag/maximize) into one GPU surface resize per frame.
+        resizeObserver = new ResizeObserver(() => {
+          if (resizeFrame) return;
+          resizeFrame = requestAnimationFrame(() => {
+            resizeFrame = 0;
+            resize();
+          });
+        });
         resizeObserver.observe(root);
         visibilityObserver = new IntersectionObserver(
           entries => {
@@ -853,6 +862,7 @@ export default function ShapeWaves({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('scroll', invalidateBounds, { capture: true });
       resizeObserver?.disconnect();
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
       visibilityObserver?.disconnect();
       unsubscribeGpuError?.();
       if (frameId) cancelAnimationFrame(frameId);

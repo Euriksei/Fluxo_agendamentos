@@ -52,8 +52,11 @@ export default function Layout()
                 </div>
             </aside>
 
-            <main className="min-h-screen flex-1 bg-linear-to-br from-brand-black via-brand-dark to-brand-black text-white p-8 py-16 md:px-48">
-                <Outlet />
+            {/* Same fix as the barber Layout: offset by the fixed aside instead of md:px-48. */}
+            <main className="min-h-screen flex-1 min-w-0 bg-linear-to-br from-brand-black via-brand-dark to-brand-black text-white px-4 pt-20 pb-10 sm:px-6 md:ml-20 md:px-10 md:py-12 xl:px-12">
+                <div className="mx-auto w-full max-w-[1760px]">
+                    <Outlet />
+                </div>
             </main>
         </div>
     );
