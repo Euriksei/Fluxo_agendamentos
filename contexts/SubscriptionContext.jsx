@@ -183,7 +183,8 @@ export function SubscriptionProvider({ children })
         }
     };
 
-    const startTrial = async (planId, trialDays = 7) => 
+    // Trial length is fixed server-side (7 days); the client no longer sends it.
+    const startTrial = async (planId) => 
     {
         setActionLoading(true);
         try 
@@ -191,7 +192,7 @@ export function SubscriptionProvider({ children })
             const response = await authFetch('/api/subscriptions/trial', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId, trialDays })
+                body: JSON.stringify({ planId })
             });
 
             const data = await response.json();

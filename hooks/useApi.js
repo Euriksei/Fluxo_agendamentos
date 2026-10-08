@@ -52,23 +52,33 @@ export function useApi()
         });
     }, []);
 
+    // options.silent: skip the global error toast (the caller renders its own error state). Not forwarded to fetch.
     const request = useCallback(async (fetchFn, endpoint, options = {}) => 
     {
+        const { silent = false, ...fetchOptions } = options || {};
+
         setError(null);
         setLoading(true);
 
         try 
         {
-            const response = await fetchFn(endpoint, options);
+            const response = await fetchFn(endpoint, fetchOptions);
             const data = await response.json();
             
-            if (!response.ok) throw new Error(data.error || 'Erro na requisição');
+            if (!response.ok) 
+            {
+                // Keep the HTTP status so callers can tell a 404 from a network failure (TypeError, no status).
+                const httpError = new Error(data.error || 'Erro na requisição');
+                httpError.status = response.status;
+                throw httpError;
+            }
 
             return data;
         } 
         catch (err) 
         {
-            setError(err.message);
+            // fetch() rejects with a TypeError ("Failed to fetch") when the network is down; show it in PT-BR.
+            if (!silent) setError(err instanceof TypeError ? 'Falha de conexão. Verifique sua internet e tente novamente.' : err.message);
             throw err;
         } 
         finally 

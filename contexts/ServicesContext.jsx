@@ -60,9 +60,9 @@ export function ServicesProvider({ children })
         return data;
     }, [authRequest]);
 
-    const getBarberServices = useCallback(async (barberId) => 
+    const getBarberServices = useCallback(async (barberId, options) => 
     {
-        return publicRequest(`/api/services/barber/${barberId}`);
+        return publicRequest(`/api/services/barber/${barberId}`, options);
     }, [publicRequest]);
 
     const getBarberEmployeesServices = useCallback(async (serviceId) => 

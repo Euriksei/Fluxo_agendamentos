@@ -75,7 +75,7 @@ export default function Assinatura()
         {
             if (usarTrial) 
             {
-                const result = await startTrial(planoSelecionado.id, 7);
+                const result = await startTrial(planoSelecionado.id);
                 if (result.success) 
                 {
                     setSucesso('Período de teste iniciado com sucesso!');

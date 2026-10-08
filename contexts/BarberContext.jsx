@@ -8,14 +8,14 @@ export function BarberProvider({ children })
 {
     const { publicRequest, loading, setLoading, error, setError } = useApi();
 
-    const getBarberId = useCallback(async (slug) => 
+    const getBarberId = useCallback(async (slug, options) => 
     {
-        return publicRequest(`/api/auth/barber/${slug}`);
+        return publicRequest(`/api/auth/barber/${slug}`, options);
     }, [publicRequest]);
 
-    const getBarberData = useCallback(async (slug) => 
+    const getBarberData = useCallback(async (slug, options) => 
     {
-        return publicRequest(`/api/auth/barber/${slug}/data`);
+        return publicRequest(`/api/auth/barber/${slug}/data`, options);
     }, [publicRequest]);
 
     const value = { loading, setLoading, error, setError, getBarberId, getBarberData };

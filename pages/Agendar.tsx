@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useBarber, useServices, useAgendas, useAppointments } from '@/contexts';
 
-import { Calendar, Clock, Check, ChevronLeft, ChevronRight, Scissors, User, Users, Mail, Phone } from 'lucide-react';
+import { Calendar, Clock, Check, ChevronLeft, ChevronRight, Scissors, User, Users, Mail, Phone, SearchX, WifiOff, RotateCw } from 'lucide-react';
+
+import Logo from '@/components/Logo';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -24,6 +26,8 @@ export default function Agendar()
     const { createAppointment } = useAppointments();
 
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null); // null | 'not-found' | 'network'
+    const [reloadKey, setReloadKey] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     
     const [barber, setBarber] = useState(null);
@@ -50,20 +54,24 @@ export default function Agendar()
     {
         const loadBarber = async () => 
         {
+            setLoading(true);
+            setLoadError(null);
+
             try 
             {
-                const id = await getBarberId(slug);
+                // silent: this page shows its own not-found / network screen, so skip the global toast
+                const id = await getBarberId(slug, { silent: true });
 
-                const barberData = await getBarberData(slug);
+                const barberData = await getBarberData(slug, { silent: true });
                 setBarber(barberData);
 
-                const servicesData = await getBarberServices(id);
+                const servicesData = await getBarberServices(id, { silent: true });
                 setServices(servicesData);
             } 
             catch (err) 
             {
-    
                 console.error(err);
+                setLoadError(err?.status === 404 ? 'not-found' : 'network');
             } 
             finally 
             {
@@ -72,7 +80,7 @@ export default function Agendar()
         };
 
         loadBarber();
-    }, [slug]);
+    }, [slug, reloadKey]);
 
     useEffect(() => 
     {
@@ -330,6 +338,46 @@ export default function Agendar()
             setSubmitting(false);
         }
     };
+
+    if (loadError) 
+    {
+        const notFound = loadError === 'not-found';
+        const Icon = notFound ? SearchX : WifiOff;
+
+        return (
+            <main className="min-h-svh bg-brand-black flex items-center justify-center px-4 py-10">
+                <div className="w-full max-w-md text-center">
+                    <Logo variant="full" textVariant="gradient" size="lg" className="flex-col gap-0 mb-8" />
+
+                    <section role="alert" className="bg-brand-dark border border-white/10 rounded-2xl p-8 shadow-2xl">
+                        <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-brand-purple/15 text-brand-purple">
+                            <Icon size={28} aria-hidden="true" />
+                        </div>
+
+                        <h1 className="text-2xl font-bold text-white mb-2">
+                            {notFound ? 'Barbearia não encontrada' : 'Não foi possível carregar'}
+                        </h1>
+                        <p className="text-brand-gray text-sm mb-8">
+                            {notFound 
+                                ? 'O link de agendamento que você acessou não existe ou foi desativado. Confira o endereço com a barbearia.' 
+                                : 'Verifique sua conexão com a internet e tente novamente.'}
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            {!notFound && (
+                                <Button onClick={() => setReloadKey(k => k + 1)} size="sm" className="inline-flex items-center justify-center gap-2">
+                                    <RotateCw size={16} aria-hidden="true" /> Tentar de novo
+                                </Button>
+                            )}
+                            <Link to="/" className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold border border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple">
+                                Ir para o início
+                            </Link>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        );
+    }
 
     if (loading && !barber) 
     {
