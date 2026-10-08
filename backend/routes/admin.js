@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import pool from '../config/database.js';
 
 import { authenticateToken, requireAdmin } from '../middlewares/authentication.js';
+import { toLocalDateString } from '../utils/date.js';
 
 const router = express.Router();
 
@@ -298,42 +299,6 @@ router.put('/plans/:id', async (req, res) =>
 });
 
 /*
-router.get('/subscriptions', async (req, res) => {
-    try {
-        const { status } = req.query;
-
-        let query = `
-            SELECT 
-                s.*,
-                u.name as ownerName,
-                u.shop,
-                u.email,
-                p.name as planName,
-                p.slug as planSlug,
-                p.price as planPrice
-            FROM subscriptions s
-            JOIN users u ON s.userId = u.id
-            JOIN plans p ON s.planId = p.id
-        `;
-
-        const params = [];
-
-        if (status) {
-            query += ' WHERE s.status = ?';
-            params.push(status);
-        }
-
-        query += ' ORDER BY s.created_at DESC';
-
-        const [subscriptions] = await pool.query(query, params);
-
-        res.json(subscriptions);
-    } catch (error) {
-        console.error('Get subscriptions error:', error);
-        res.status(500).json({ error: 'Erro ao buscar assinaturas' });
-    }
-});
-
 router.put('/subscriptions/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -407,7 +372,7 @@ router.get('/subscriptions', async (req, res) =>
     {
         const { status, planId, offset = 0, limit = 50 } = req.query;
 
-        let query = `SELECT s.*, u.name as ownerName, u.shop, u.email as userEmail, p.name as planName, p.slug as planSlug, p.price as planPrice FROM subscriptions s JOIN users u 
+        let query = `SELECT s.*, u.name as ownerName, u.shop, u.email, u.email as userEmail, p.name as planName, p.slug as planSlug, p.price as planPrice FROM subscriptions s JOIN users u 
             ON s.userId = u.id JOIN plans p ON s.planId = p.id WHERE 1=1`;
         const params = [];
 
@@ -480,7 +445,48 @@ router.get('/subscriptions/:id', async (req, res) =>
     }
 });
 
-router.put('/subscriptions/:id/status', async (req, res) => 
+router.put('/subscriptions/:id', async (req, res) =>
+{
+    try
+    {
+        const { id } = req.params;
+        const { planId, status, nextPaymentAt } = req.body;
+
+        const validStatuses = ['ACTIVE', 'PENDING', 'TRIAL', 'OVERDUE', 'SUSPENDED', 'CANCELLED'];
+        if (status != null && !validStatuses.includes(status)) return res.status(400).json({ error: 'Status inválido' });
+
+        if (planId != null && (!Number.isInteger(planId) || planId <= 0)) return res.status(400).json({ error: 'Plano inválido' });
+
+        if (nextPaymentAt != null)
+        {
+            const validDate = typeof nextPaymentAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(nextPaymentAt) && toLocalDateString(new Date(nextPaymentAt + 'T00:00:00')) === nextPaymentAt;
+            if (!validDate) return res.status(400).json({ error: 'Data do próximo pagamento inválida' });
+        }
+
+        if (planId != null)
+        {
+            const [plans] = await pool.query('SELECT id FROM plans WHERE id = ?', [planId]);
+            if (plans.length === 0) return res.status(404).json({ error: 'Plano não encontrado' });
+        }
+
+        const [result] = await pool.query('UPDATE subscriptions SET planId = COALESCE(?, planId), status = COALESCE(?, status), nextPaymentAt = COALESCE(?, nextPaymentAt) WHERE id = ?',
+            [planId ?? null, status ?? null, nextPaymentAt ?? null, id]);
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Assinatura não encontrada' });
+
+        const [subscriptions] = await pool.query(`SELECT s.*, u.name as ownerName, u.shop, u.email, u.email as userEmail, p.name as planName, p.slug as planSlug, p.price as planPrice
+            FROM subscriptions s JOIN users u ON s.userId = u.id JOIN plans p ON s.planId = p.id WHERE s.id = ?`, [id]);
+
+        res.json(subscriptions[0]);
+    }
+    catch (error)
+    {
+        console.error('Update subscription error:', error);
+        res.status(500).json({ error: 'Erro ao atualizar assinatura' });
+    }
+});
+
+router.put('/subscriptions/:id/status', async (req, res) =>
 {
     try 
     {

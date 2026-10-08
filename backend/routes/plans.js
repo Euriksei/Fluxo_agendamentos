@@ -53,7 +53,7 @@ router.get('/me', authenticateToken, async (req, res) =>
                 slug: sub.planSlug,
                 price: sub.planPrice,
                 maxEmployees: sub.maxEmployees,
-                features: JSON.parse(sub.features || '[]')
+                features: typeof sub.features === 'string' ? JSON.parse(sub.features) : (sub.features || [])
             },
             isLimited: sub.status !== 'ACTIVE' && sub.status !== 'TRIAL'
         });

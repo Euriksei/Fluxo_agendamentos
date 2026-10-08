@@ -6,6 +6,7 @@ import { checkSubscription, requireFeature } from '../middlewares/subscription.j
 
 import { validateEmail, validatePhone } from '../utils/validations.js';
 import { normalizeTime, timeToMinutes, addMinutesToTime } from '../utils/time.js';
+import { toLocalDateString } from '../utils/date.js';
 
 const router = express.Router();
 
@@ -309,11 +310,11 @@ router.patch('/:id/status', async (req, res) =>
 
         if (status === 'COMPLETED')
         {
-            const aptDate = appointment.appointmentDate.toISOString().split('T')[0] + ' 00:00:00';
+            const aptDate = toLocalDateString(appointment.appointmentDate);
             const aptEndTime = appointment.endTime.slice(0, 5);
 
             const now = new Date();
-            const todayStr = now.toISOString().split('T')[0];
+            const todayStr = toLocalDateString(now);
             const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
             const isFutureDate = aptDate > todayStr;
@@ -385,7 +386,7 @@ router.patch('/:id/reschedule', async (req, res) =>
         if (appointment.status === 'COMPLETED') return res.status(400).json({ error: 'Não é possível reagendar um agendamento concluído' });
         if (appointment.status === 'CANCELLED') return res.status(400).json({ error: 'Não é possível reagendar um agendamento cancelado' });
 
-        const newDate = appointmentDate || appointment.appointmentDate.toISOString().split('T')[0];
+        const newDate = appointmentDate || toLocalDateString(appointment.appointmentDate);
         const newStartTime = startTime || appointment.startTime;
         const normalizedStartTime = normalizeTime(newStartTime);
         const newEndTime = addMinutesToTime(newStartTime, appointment.serviceDuration);
@@ -396,7 +397,7 @@ router.patch('/:id/reschedule', async (req, res) =>
 
         if (targetDate < today) return res.status(400).json({ error: 'Não é possível reagendar para datas passadas' });
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = toLocalDateString();
         if (appointmentDate === todayStr)
         {
             const now = new Date();

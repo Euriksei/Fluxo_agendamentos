@@ -5,10 +5,13 @@ import { authenticateToken } from '../middlewares/authentication.js';
 
 import { getOwnerId } from '../utils/user.js';
 import { centavosParaReais } from '../utils/currency.js';
+import { toLocalDateString } from '../utils/date.js';
 
 import asaasService from '../services/asaas.js';
 
 const router = express.Router();
+
+const TRIAL_DAYS = 7;
 
 const ASAAS_WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN;
 router.post('/webhook', async (req, res) => 
@@ -351,7 +354,7 @@ router.post('/trial', async (req, res) =>
 
         const userId = req.user.id;
         const ownerId = await getOwnerId(userId);
-        const { planId, trialDays = 7 } = req.body;
+        const { planId } = req.body;
 
         if (!planId) return res.status(400).json({ error: 'Plano é obrigatório' });
 
@@ -363,8 +366,8 @@ router.post('/trial', async (req, res) =>
         const plan = plans[0];
 
         const trialEndsAt = new Date();
-        trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
-        const formattedTrialEnd = trialEndsAt.toISOString().split('T')[0];
+        trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
+        const formattedTrialEnd = toLocalDateString(trialEndsAt);
 
         const [result] = await connection.query(`INSERT INTO subscriptions (userId, planId, status, trialEndsAt, createdAt) VALUES (?, ?, 'TRIAL', ?, NOW())`,
             [ownerId, planId, formattedTrialEnd]);
@@ -384,7 +387,7 @@ router.post('/trial', async (req, res) =>
                 features: features
             },
             trialEndsAt: formattedTrialEnd,
-            trialDays: trialDays
+            trialDays: TRIAL_DAYS
         });
     } 
     catch (error) 

@@ -6,6 +6,7 @@ import { checkSubscription, requireFeature } from '../middlewares/subscription.j
 
 import { getOwnerId } from '../utils/user.js';
 import { normalizeTime, timeToMinutes, minutesToTime, isTimeOverlap, isInLunchTime } from '../utils/time.js';
+import { toLocalDateString } from '../utils/date.js';
 
 const router = express.Router();
 
@@ -85,8 +86,7 @@ router.get('/slots/:userId/:date', async (req, res) =>
         const lunchEnd = agenda.lunchEnd;
 
         const now = new Date();
-        const todayStr = now.toFullYear ? null : now.toISOString().split('T')[0];
-        const isToday = date === now.toISOString().split('T')[0];
+        const isToday = date === toLocalDateString(now);
         const currentMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : -1;
 
         const slots = [];
@@ -291,7 +291,7 @@ router.post('/blocks', async (req, res) =>
         
         for (let currentDate = new Date(startDate); currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) 
         {
-            const dateStr = currentDate.toISOString().split('T')[0];
+            const dateStr = toLocalDateString(currentDate);
             const dayOfWeek = currentDate.getDay();
 
             const [agenda] = await pool.query('SELECT id FROM agendas WHERE userId = ? AND dayOfWeek = ? AND isActive = TRUE', [userId, dayOfWeek]);
