@@ -6,7 +6,7 @@ import { authenticateToken } from '../middlewares/authentication.js';
 import { checkSubscription, requireFeature, requireCanAddEmployee } from '../middlewares/subscription.js';
 
 import { validateEmail } from '../utils/validations.js';
-import { normalizeTime  } from '../utils/time.js';
+import { normalizeTime, DEFAULT_SLOT_DURATION, isValidSlotDuration } from '../utils/time.js';
 
 const router = express.Router();
 
@@ -218,7 +218,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/agendas', async (req, res) => {
     try {
         const { id } = req.params;
-        const { dayOfWeek, startTime, endTime, slotDuration = 30, lunchStart, lunchEnd } = req.body;
+        const { dayOfWeek, startTime, endTime, slotDuration = DEFAULT_SLOT_DURATION, lunchStart, lunchEnd } = req.body;
         const ownerId = req.user.id;
 
         // Verifica se o funcionário pertence ao dono
@@ -234,6 +234,10 @@ router.post('/:id/agendas', async (req, res) => {
         // Validações
         if (dayOfWeek === undefined || !startTime || !endTime) {
             return res.status(400).json({ error: 'Dia da semana, horário de início e fim são obrigatórios' });
+        }
+
+        if (!isValidSlotDuration(slotDuration)) {
+            return res.status(400).json({ error: 'Duração do slot deve ser 0 (sem intervalo) ou entre 5 e 480 minutos' });
         }
 
         const normalizedLunchStart = lunchStart ? normalizeTime(lunchStart) : null;
@@ -281,13 +285,14 @@ router.put('/:employeeId/agendas/:agendaId', async (req, res) =>
         if (existing.length === 0) return res.status(404).json({ error: 'Agenda não encontrada' });
  
         if (!startTime || !endTime) return res.status(400).json({ error: 'Horário de início e fim são obrigatórios' });
+        if (slotDuration != null && !isValidSlotDuration(slotDuration)) return res.status(400).json({ error: 'Duração do slot deve ser 0 (sem intervalo) ou entre 5 e 480 minutos' });
         if ((lunchStart && !lunchEnd) || (!lunchStart && lunchEnd)) return res.status(400).json({ error: 'Informe início e fim do horário de almoço' });
  
         const normalizedLunchStart = lunchStart ? normalizeTime(lunchStart) : null;
         const normalizedLunchEnd = lunchEnd ? normalizeTime(lunchEnd) : null;
  
         await pool.query(`UPDATE agendas SET startTime = ?, endTime = ?, slotDuration = COALESCE(?, slotDuration), lunchStart = ?, lunchEnd = ?, isActive = TRUE
-            WHERE id = ? AND userId = ?`, [normalizeTime(startTime), normalizeTime(endTime), slotDuration || null, normalizedLunchStart, normalizedLunchEnd, agendaId, employeeId]);
+            WHERE id = ? AND userId = ?`, [normalizeTime(startTime), normalizeTime(endTime), slotDuration ?? null, normalizedLunchStart, normalizedLunchEnd, agendaId, employeeId]);
  
         const [updated] = await pool.query('SELECT * FROM agendas WHERE id = ?', [agendaId]);
         res.json(updated[0]);

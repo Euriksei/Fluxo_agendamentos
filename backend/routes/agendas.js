@@ -5,7 +5,7 @@ import { authenticateToken } from '../middlewares/authentication.js';
 import { checkSubscription, requireFeature } from '../middlewares/subscription.js';
 
 import { getOwnerId } from '../utils/user.js';
-import { normalizeTime, timeToMinutes, minutesToTime, isTimeOverlap, isInLunchTime } from '../utils/time.js';
+import { normalizeTime, timeToMinutes, minutesToTime, isTimeOverlap, isInLunchTime, DEFAULT_SLOT_DURATION, isValidSlotDuration } from '../utils/time.js';
 import { toLocalDateString } from '../utils/date.js';
 
 const router = express.Router();
@@ -71,16 +71,17 @@ router.get('/slots/:userId/:date', async (req, res) =>
         const [appointments] = await pool.query(`SELECT startTime, endTime FROM appointments WHERE barberId = ? AND appointmentDate = ? AND status NOT IN ('CANCELLED')`,
             [userId, date]);
 
-        let serviceDuration = agenda.slotDuration;
-        if (serviceId) 
+        let serviceDuration = agenda.slotDuration || DEFAULT_SLOT_DURATION;
+        if (serviceId)
         {
             const [services] = await pool.query('SELECT duration FROM services WHERE id = ?', [serviceId]);
-            if (services.length > 0) serviceDuration = services[0].duration;
+            if (services.length > 0 && services[0].duration > 0) serviceDuration = services[0].duration;
         }
 
         const startMinutes = timeToMinutes(agenda.startTime);
         const endMinutes = timeToMinutes(agenda.endTime);
-        const slotInterval = agenda.slotDuration;
+        // slotDuration 0 = sem intervalo fixo: o próximo horário começa quando o serviço termina
+        const slotInterval = agenda.slotDuration > 0 ? agenda.slotDuration : serviceDuration;
 
         const lunchStart = agenda.lunchStart;
         const lunchEnd = agenda.lunchEnd;
@@ -91,7 +92,16 @@ router.get('/slots/:userId/:date', async (req, res) =>
 
         const slots = [];
 
-        for (let time = startMinutes; time + serviceDuration <= endMinutes; time += slotInterval)
+        // Depois do almoço os horários recomeçam no fim do almoço, sem seguir o passo
+        const lunchEndMinutes = lunchStart && lunchEnd ? timeToMinutes(lunchEnd) : null;
+        const nextSlotTime = (time) =>
+        {
+            const next = time + slotInterval;
+            if (lunchEndMinutes !== null && time < lunchEndMinutes && next > lunchEndMinutes) return lunchEndMinutes;
+            return next;
+        };
+
+        for (let time = startMinutes; time + serviceDuration <= endMinutes; time = nextSlotTime(time))
         {
             const slotStart = minutesToTime(time);
             const slotEnd = minutesToTime(time + serviceDuration);
@@ -199,13 +209,22 @@ router.post('/', async (req, res) =>
 {
     try 
     {
-        const { dayOfWeek, startTime, endTime, slotDuration = 30, lunchStart, lunchEnd } = req.body;
+        const { dayOfWeek, daysOfWeek, startTime, endTime, slotDuration = DEFAULT_SLOT_DURATION, lunchStart, lunchEnd } = req.body;
         const userId = req.user.id;
         const ownerId = await getOwnerId(userId);
 
-        if (dayOfWeek === undefined || !startTime || !endTime) return res.status(400).json({ error: 'Dia da semana, horário de início e fim são obrigatórios' });
-        if (dayOfWeek < 0 || dayOfWeek > 6) return res.status(400).json({ error: 'Dia da semana deve ser entre 0 (Domingo) e 6 (Sábado)' });
-        if (slotDuration < 5 || slotDuration > 480) return res.status(400).json({ error: 'Duração do slot deve ser entre 5 e 480 minutos' });
+        const isMultiple = daysOfWeek !== undefined;
+        if ((!isMultiple && dayOfWeek === undefined) || !startTime || !endTime) return res.status(400).json({ error: 'Dia da semana, horário de início e fim são obrigatórios' });
+
+        if (isMultiple)
+        {
+            if (!Array.isArray(daysOfWeek) || daysOfWeek.length < 1 || daysOfWeek.length > 7) return res.status(400).json({ error: 'Informe de 1 a 7 dias da semana' });
+            if (!daysOfWeek.every(day => Number.isInteger(day) && day >= 0 && day <= 6)) return res.status(400).json({ error: 'Dia da semana deve ser entre 0 (Domingo) e 6 (Sábado)' });
+            if (new Set(daysOfWeek).size !== daysOfWeek.length) return res.status(400).json({ error: 'Dias da semana repetidos' });
+        }
+        else if (dayOfWeek < 0 || dayOfWeek > 6) return res.status(400).json({ error: 'Dia da semana deve ser entre 0 (Domingo) e 6 (Sábado)' });
+
+        if (!isValidSlotDuration(slotDuration)) return res.status(400).json({ error: 'Duração do slot deve ser 0 (sem intervalo) ou entre 5 e 480 minutos' });
         if ((lunchStart && !lunchEnd) || (!lunchStart && lunchEnd)) return res.status(400).json({ error: 'Informe início e fim do horário de almoço' });
 
         if (lunchStart && lunchEnd) 
@@ -222,8 +241,52 @@ router.post('/', async (req, res) =>
         const normalizedLunchStart = lunchStart ? normalizeTime(lunchStart) : null;
         const normalizedLunchEnd = lunchEnd ? normalizeTime(lunchEnd) : null;
 
+        if (isMultiple)
+        {
+            const connection = await pool.getConnection();
+
+            try
+            {
+                await connection.beginTransaction();
+
+                const [existing] = await connection.query('SELECT dayOfWeek, isActive FROM agendas WHERE userId = ? AND dayOfWeek IN (?) FOR UPDATE', [userId, daysOfWeek]);
+
+                // Só agenda ativa conflita; dia removido (isActive = FALSE) é reativado com os novos dados
+                const conflictDays = existing.filter(agenda => agenda.isActive !== 0).map(agenda => agenda.dayOfWeek).sort((a, b) => a - b);
+                if (conflictDays.length > 0) return res.status(409).json({ error: 'Já existe agenda para alguns dos dias selecionados', conflictDays });
+
+                const inactiveDays = new Set(existing.map(agenda => agenda.dayOfWeek));
+
+                for (const day of daysOfWeek)
+                {
+                    if (inactiveDays.has(day))
+                    {
+                        await connection.query(`UPDATE agendas SET startTime = ?, endTime = ?, slotDuration = ?, lunchStart = ?, lunchEnd = ?, isActive = TRUE WHERE userId = ? AND dayOfWeek = ?`,
+                            [normalizeTime(startTime), normalizeTime(endTime), slotDuration, normalizedLunchStart, normalizedLunchEnd, userId, day]);
+                    }
+                    else
+                    {
+                        await connection.query(`INSERT INTO agendas (userId, ownerId, dayOfWeek, startTime, endTime, slotDuration, lunchStart, lunchEnd) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [userId, ownerId, day, normalizeTime(startTime), normalizeTime(endTime), slotDuration, normalizedLunchStart, normalizedLunchEnd]);
+                    }
+                }
+
+                const [agendas] = await connection.query('SELECT * FROM agendas WHERE userId = ? AND dayOfWeek IN (?) ORDER BY dayOfWeek', [userId, daysOfWeek]);
+
+                await connection.commit();
+
+                return res.status(201).json(agendas);
+            }
+            finally
+            {
+                await connection.rollback().catch(() => {});
+                connection.release();
+            }
+        }
+
         await pool.query(`INSERT INTO agendas (userId, ownerId, dayOfWeek, startTime, endTime, slotDuration, lunchStart, lunchEnd) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE startTime = VALUES(startTime), endTime = VALUES(endTime), slotDuration = VALUES(slotDuration), isActive = TRUE`,
+            ON DUPLICATE KEY UPDATE startTime = VALUES(startTime), endTime = VALUES(endTime), slotDuration = VALUES(slotDuration), lunchStart = VALUES(lunchStart),
+                lunchEnd = VALUES(lunchEnd), isActive = TRUE`,
                 [userId, ownerId, dayOfWeek, normalizeTime(startTime), normalizeTime(endTime), slotDuration, normalizedLunchStart, normalizedLunchEnd]);
 
         const [agenda] = await pool.query('SELECT * FROM agendas WHERE userId = ? AND dayOfWeek = ?', [userId, dayOfWeek]);
@@ -244,6 +307,8 @@ router.put('/:id', async (req, res) =>
         const { id } = req.params;
         const { startTime, endTime, lunchStart, lunchEnd, slotDuration, isActive } = req.body;
         const userId = req.user.id;
+
+        if (slotDuration != null && !isValidSlotDuration(slotDuration)) return res.status(400).json({ error: 'Duração do slot deve ser 0 (sem intervalo) ou entre 5 e 480 minutos' });
 
         const [existing] = await pool.query('SELECT id FROM agendas WHERE id = ? AND userId = ?', [id, userId]);
 

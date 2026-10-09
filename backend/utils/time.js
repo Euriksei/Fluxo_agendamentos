@@ -43,3 +43,11 @@ export function isInLunchTime(slotStart, slotEnd, lunchStart, lunchEnd)
     if (!lunchStart || !lunchEnd) return false;
     return isTimeOverlap(slotStart, slotEnd, lunchStart, lunchEnd);
 }
+
+export const DEFAULT_SLOT_DURATION = 30;
+
+// 0 = sem intervalo fixo: o passo passa a ser a duração do serviço
+export function isValidSlotDuration(value)
+{
+    return Number.isInteger(value) && (value === 0 || (value >= 5 && value <= 480));
+}
