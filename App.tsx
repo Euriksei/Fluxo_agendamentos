@@ -12,6 +12,7 @@ import Agendar from '@/pages/Agendar';
 import MeusAgendamentos from '@/pages/MeusAgendamentos';
 
 import Layout from '@/components/Layout';
+import FeatureGate from '@/components/FeatureGate';
 import Dashboard from '@/pages/Dashboard';
 import Horarios from '@/pages/Horarios';
 import Agenda from '@/pages/Agenda';
@@ -43,11 +44,11 @@ const App: React.FC = () =>
                 {/* Rotas protegidas */}
                 <Route element={ <ProtectedRoute> <Layout /> </ProtectedRoute>  }>
                     <Route path="/dashboard" element={ <Dashboard /> } />
-                    <Route path="/agenda" element={ <Agenda /> } />    
-                    <Route path="/horarios" element={ <Horarios /> } />
-                    <Route path="/servicos" element={ <Serviços /> } />
-                    <Route path="/caixa" element={ <Caixa /> } />
-                    <Route path="/equipe" element={ <Equipe /> } />
+                    <Route path="/agenda" element={ <FeatureGate feature="appointments"><Agenda /></FeatureGate> } />    
+                    <Route path="/horarios" element={ <FeatureGate feature="agendas"><Horarios /></FeatureGate> } />
+                    <Route path="/servicos" element={ <FeatureGate feature="services"><Serviços /></FeatureGate> } />
+                    <Route path="/caixa" element={ <FeatureGate feature="flows"><Caixa /></FeatureGate> } />
+                    <Route path="/equipe" element={ <FeatureGate feature="employees"><Equipe /></FeatureGate> } />
                     <Route path="/assinatura" element={ <Assinatura /> } />
                 </Route>
 

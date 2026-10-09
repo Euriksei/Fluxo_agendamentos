@@ -14,7 +14,10 @@ export default function Dashboard()
     const { user } = useAuth();
     const { getBarberAppointments } = useAppointments();
     const { getFlows } = useFlows();
-    const { subscription } = useSubscription();
+    const { subscription, subscriptionLoaded, hasFeature } = useSubscription();
+    // Plan without the feature: skip the request (it would 403) and show an upgrade hint in that card
+    const temAgenda = !subscription || hasFeature('appointments');
+    const temCaixa = !subscription || hasFeature('flows');
 
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState(false);
@@ -42,7 +45,7 @@ export default function Dashboard()
                 setLoading(true);
 
                 const hoje = hojeLocal();
-                const todayData = await getBarberAppointments(hoje);
+                const todayData = temAgenda ? await getBarberAppointments(hoje) : null;
 
                 if (todayData) 
                 {
@@ -52,7 +55,7 @@ export default function Dashboard()
                     setStats(prev => ({ ...prev, todayCount: todayData.length, todayRevenue: completed.reduce((sum, a) => sum + (a.price || 0), 0) }));
                 }
 
-                const upcomingData = await getBarberAppointments();
+                const upcomingData = temAgenda ? await getBarberAppointments() : null;
                 if (upcomingData)
                 {
                     const now = new Date();
@@ -91,17 +94,17 @@ export default function Dashboard()
                         monthCount: monthCompleted.length, monthRevenue: monthCompleted.reduce((sum, a) => sum + (a.price || 0), 0) }));
                 }
 
-                const flowsData = await getFlows(1);
+                const flowsData = temCaixa ? await getFlows(1) : [];
                 setRecentFlows(Array.isArray(flowsData) ? flowsData.slice(0, 5) : []);
             } 
             catch (err) { console.error(err); } 
             finally { setLoading(false); }
         };
 
-        if (userId) {
+        if (userId && subscriptionLoaded) {
             loadDashboard();
         }
-    }, [userId, getBarberAppointments, getFlows]);
+    }, [userId, subscriptionLoaded, temAgenda, temCaixa, getBarberAppointments, getFlows]);
 
     const handleCopyLink = async () => 
     {
@@ -341,7 +344,7 @@ export default function Dashboard()
                     (
                         <div className="text-center py-8">
                             <Calendar size={40} className="mx-auto text-brand-gray mb-3" />
-                            <p className="text-brand-gray">Nenhum agendamento para hoje</p>
+                            <p className="text-brand-gray">{temAgenda ? 'Nenhum agendamento para hoje' : <>{"Agenda não está no seu plano. "}<Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link></>}</p>
                         </div>
                     )}
                 </div>
@@ -393,7 +396,7 @@ export default function Dashboard()
                     (
                         <div className="text-center py-8">
                             <Clock size={40} className="mx-auto text-brand-gray mb-3" />
-                            <p className="text-brand-gray">Nenhum agendamento futuro</p>
+                            <p className="text-brand-gray">{temAgenda ? 'Nenhum agendamento futuro' : <>{"Agenda não está no seu plano. "}<Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link></>}</p>
                         </div>
                     )}
                 </div>
@@ -438,7 +441,7 @@ export default function Dashboard()
                     (
                         <div className="text-center py-8">
                             <DollarSign size={40} className="mx-auto text-brand-gray mb-3" />
-                            <p className="text-brand-gray">Nenhuma movimentação recente</p>
+                            <p className="text-brand-gray">{temCaixa ? 'Nenhuma movimentação recente' : <>{"Fluxo de Caixa não está no seu plano. "}<Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link></>}</p>
                         </div>
                     )}
                 </div>

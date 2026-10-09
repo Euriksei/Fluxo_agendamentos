@@ -14,8 +14,9 @@ export function SubscriptionProvider({ children })
     const userId = user?.user?.id;
     const [plans, setPlans] = useState([]);
     const [payments, setPayments] = useState([]);
-    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
+    // true once /api/subscriptions/me answered (or failed) for the current user: gates must not block before that
+    const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
     useEffect(() => 
     {
@@ -24,6 +25,7 @@ export function SubscriptionProvider({ children })
             if (!userId) 
             {
                 setSubscription(null);
+                setSubscriptionLoaded(false);
                 setLoading(false);
                 return;
             }
@@ -44,6 +46,7 @@ export function SubscriptionProvider({ children })
             finally 
             {
                 setLoading(false);
+                setSubscriptionLoaded(true);
             }
         };
 
@@ -267,7 +270,8 @@ export function SubscriptionProvider({ children })
                 return { success: true, data };
             }
 
-            return { success: false, error: data.error };
+            // keep code/current/max (e.g. 409 EMPLOYEE_LIMIT) so the page can explain what to do
+            return { success: false, error: data.error, code: data.code, status: response.status, data };
         } 
         catch (err) 
         {
@@ -392,13 +396,21 @@ export function SubscriptionProvider({ children })
         }
     };
 
-    const isFeatureAvailable = (feature) => 
+    // Same rule as the backend's requireFeature(): the plan's feature list must contain the slug.
+    const parsePlanFeatures = (features) =>
     {
-        if (!subscription) return false;
-        if (subscription.plan?.slug === 'premium') return true;
-        
-        const features = subscription.plan?.features || [];
-        return features.some(f => f.toLowerCase().includes(feature.toLowerCase()));
+        if (Array.isArray(features)) return features;
+        try { return JSON.parse(features || '[]'); } catch { return []; }
+    };
+
+    const hasFeature = (feature) => parsePlanFeatures(subscription?.plan?.features).includes(feature);
+
+    // Upgrade waiting for payment: the plan only changes after the payment is confirmed.
+    // GET /subscriptions/me and PUT 202 return pendingPlan {id,name,slug,price} (or null); PUT may add payment {id,status,billingType,invoiceUrl}.
+    const getPendingPlanChange = (source = subscription) =>
+    {
+        if (!source?.pendingPlan) return null;
+        return { plan: source.pendingPlan, name: source.pendingPlan.name, message: source.message || null, payment: source.payment || null };
     };
 
     const canAddEmployee = () => 
@@ -406,16 +418,6 @@ export function SubscriptionProvider({ children })
         if (!subscription) return false;
         const max = subscription.plan?.maxEmployees || 0;
         return max > 0;
-    };
-
-    const checkAndShowUpgrade = (feature) => 
-    {
-        if (!isFeatureAvailable(feature)) 
-        {
-            setShowUpgradeModal(true);
-            return false;
-        }
-        return true;
     };
 
     const isTrialExpired = () => 
@@ -482,16 +484,14 @@ export function SubscriptionProvider({ children })
         fetchPayments,
         getPaymentDetails,
         
-        isFeatureAvailable, 
+        subscriptionLoaded,
+        hasFeature,
+        getPendingPlanChange,
         canAddEmployee, 
-        checkAndShowUpgrade,
         isTrialExpired,
         getTrialDaysRemaining,
         hasActiveSubscription,
-        isPendingPayment,
-        
-        showUpgradeModal, 
-        setShowUpgradeModal
+        isPendingPayment
     };
 
     return (

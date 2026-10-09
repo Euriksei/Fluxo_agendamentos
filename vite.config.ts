@@ -13,8 +13,9 @@ export default defineConfig(({ mode }) =>
             port: 3000,
             host: '0.0.0.0',
             proxy: {
-                '/api': { target: 'http://localhost:3001', changeOrigin: true },
-                '/uploads': { target: 'http://localhost:3001', changeOrigin: true }
+                // xfwd: envia X-Forwarded-For para o backend (trust proxy 'loopback') limitar por IP real, não pelo do proxy
+                '/api': { target: 'http://localhost:3001', changeOrigin: true, xfwd: true },
+                '/uploads': { target: 'http://localhost:3001', changeOrigin: true, xfwd: true }
             }
         },
         plugins: [

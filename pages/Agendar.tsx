@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useBarber, useServices, useAgendas, useAppointments } from '@/contexts';
 
-import { Calendar, Clock, Check, ChevronLeft, ChevronRight, Scissors, User, Users, Mail, Phone, SearchX, WifiOff, RotateCw } from 'lucide-react';
+import { Calendar, Clock, Check, ChevronLeft, ChevronRight, Scissors, User, Users, Mail, Phone, SearchX, WifiOff, RotateCw, CalendarOff } from 'lucide-react';
 
 import Logo from '@/components/Logo';
 
@@ -13,6 +13,9 @@ import TextArea from '@/components/ui/TextArea';
 import { formatarDataCompleta, formatarMoeda, formatarTelefone, formatDateLocal } from '@/utils';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+// 404 = slug does not exist; 403 BOOKING_UNAVAILABLE = shop exists but online booking is off (no plan details shown)
+const erroDeCarga = (err) => err?.status === 404 ? 'not-found' : (err?.status === 403 && err?.data?.code === 'BOOKING_UNAVAILABLE') ? 'unavailable' : 'network';
+
 const ETAPAS = ['Serviço', 'Profissional', 'Data', 'Horário', 'Dados', 'Confirmar'];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -27,7 +30,7 @@ export default function Agendar()
     const { createAppointment } = useAppointments();
 
     const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState(null); // null | 'not-found' | 'network'
+    const [loadError, setLoadError] = useState(null); // null | 'not-found' | 'unavailable' | 'network'
     const [reloadKey, setReloadKey] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     
@@ -66,13 +69,20 @@ export default function Agendar()
                 const barberData = await getBarberData(slug, { silent: true });
                 setBarber(barberData);
 
+                // Online booking switched off: show the unavailable screen without calling the (403) public routes
+                if (barberData?.bookingAvailable === false)
+                {
+                    setLoadError('unavailable');
+                    return;
+                }
+
                 const servicesData = await getBarberServices(id, { silent: true });
                 setServices(servicesData);
             } 
             catch (err) 
             {
                 console.error(err);
-                setLoadError(err?.status === 404 ? 'not-found' : 'network');
+                setLoadError(erroDeCarga(err));
             } 
             finally 
             {
@@ -333,6 +343,8 @@ export default function Agendar()
         catch (err) 
         {
             console.error(err);
+            // Booking switched off while the client was filling the form
+            if (erroDeCarga(err) === 'unavailable') setLoadError('unavailable');
         } 
         finally 
         {
@@ -343,7 +355,8 @@ export default function Agendar()
     if (loadError) 
     {
         const notFound = loadError === 'not-found';
-        const Icon = notFound ? SearchX : WifiOff;
+        const unavailable = loadError === 'unavailable';
+        const Icon = notFound ? SearchX : unavailable ? CalendarOff : WifiOff;
 
         return (
             <main className="min-h-svh bg-brand-black flex items-center justify-center px-4 py-10">
@@ -356,16 +369,18 @@ export default function Agendar()
                         </div>
 
                         <h1 className="text-2xl font-bold text-white mb-2">
-                            {notFound ? 'Barbearia não encontrada' : 'Não foi possível carregar'}
+                            {notFound ? 'Barbearia não encontrada' : unavailable ? 'Agendamento indisponível no momento' : 'Não foi possível carregar'}
                         </h1>
                         <p className="text-brand-gray text-sm mb-8">
                             {notFound 
                                 ? 'O link de agendamento que você acessou não existe ou foi desativado. Confira o endereço com a barbearia.' 
+                                : unavailable
+                                ? 'Esta barbearia não está recebendo agendamentos online agora. Entre em contato diretamente com ela ou tente mais tarde.'
                                 : 'Verifique sua conexão com a internet e tente novamente.'}
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                            {!notFound && (
+                            {!notFound && !unavailable && (
                                 <Button onClick={() => setReloadKey(k => k + 1)} size="sm" className="inline-flex items-center justify-center gap-2">
                                     <RotateCw size={16} aria-hidden="true" /> Tentar de novo
                                 </Button>
@@ -759,7 +774,7 @@ export default function Agendar()
                             Para ver ou cancelar seus agendamentos, acesse usando seu email:
                         </p>
 
-                        <Button onClick={() => navigate(`/meus-agendamentos?email=${encodeURIComponent(clientData.email)}`)} variant="outline" fullWidth>
+                        <Button onClick={() => navigate(`/meus-agendamentos?email=${encodeURIComponent(clientData.email)}&phone=${encodeURIComponent(clientData.phone.replace(/\D/g, ''))}`)} variant="outline" fullWidth>
                             Ver Meus Agendamentos
                         </Button>
                     </div>

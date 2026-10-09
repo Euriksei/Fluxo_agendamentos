@@ -542,11 +542,11 @@ export default function Equipe()
                     <div className="grid grid-cols-2 gap-3">
                         <div className="min-w-0">
                             <label htmlFor="func-agenda-inicio" className="block text-sm text-brand-gray mb-1">Início</label>
-                            <Input id="func-agenda-inicio" type="time" value={formAgenda.startTime} onChange={e => setFormAgenda({ ...formAgenda, startTime: e.target.value })} fullWidth required className="min-h-12 appearance-none" />
+                            <Input id="func-agenda-inicio" type="time" value={formAgenda.startTime} onChange={e => setFormAgenda({ ...formAgenda, startTime: e.target.value })} fullWidth required className="min-h-12" />
                         </div>
                         <div className="min-w-0">
                             <label htmlFor="func-agenda-fim" className="block text-sm text-brand-gray mb-1">Fim</label>
-                            <Input id="func-agenda-fim" type="time" value={formAgenda.endTime} onChange={e => setFormAgenda({ ...formAgenda, endTime: e.target.value })} fullWidth required className="min-h-12 appearance-none" />
+                            <Input id="func-agenda-fim" type="time" value={formAgenda.endTime} onChange={e => setFormAgenda({ ...formAgenda, endTime: e.target.value })} fullWidth required className="min-h-12" />
                         </div>
                     </div>
 
@@ -568,12 +568,12 @@ export default function Equipe()
                         <div className="grid grid-cols-2 gap-3">
                             <div className="min-w-0">
                                 <label htmlFor="func-almoco-inicio" className="block text-sm text-brand-gray mb-1">Início do Almoço</label>
-                                <Input id="func-almoco-inicio" type="time" value={formAgenda.lunchStart} fullWidth required={formAgenda.hasLunch} className="min-h-12 appearance-none"
+                                <Input id="func-almoco-inicio" type="time" value={formAgenda.lunchStart} fullWidth required={formAgenda.hasLunch} className="min-h-12"
                                     onChange={e => setFormAgenda({ ...formAgenda, lunchStart: e.target.value })} />
                             </div>
                             <div className="min-w-0">
                                 <label htmlFor="func-almoco-fim" className="block text-sm text-brand-gray mb-1">Fim do Almoço</label>
-                                <Input id="func-almoco-fim" type="time" value={formAgenda.lunchEnd} fullWidth required={formAgenda.hasLunch} className="min-h-12 appearance-none"
+                                <Input id="func-almoco-fim" type="time" value={formAgenda.lunchEnd} fullWidth required={formAgenda.hasLunch} className="min-h-12"
                                     onChange={e => setFormAgenda({ ...formAgenda, lunchEnd: e.target.value })} />
                             </div>
                         </div>

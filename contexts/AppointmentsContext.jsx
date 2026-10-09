@@ -78,17 +78,19 @@ export function AppointmentsProvider({ children })
 
     // FUNÇÕES PÚBLICAS
 
-    const getClientAppointments = useCallback(async (email) => 
+    // Client lookups require email AND phone (only the person who booked can see/cancel)
+    const getClientAppointments = useCallback(async (email, phone, options) =>
     {
-        return publicRequest(`/api/appointments/client/${encodeURIComponent(email)}`);
+        return publicRequest(`/api/appointments/client/${encodeURIComponent(email)}?phone=${encodeURIComponent(String(phone || '').replace(/\D/g, ''))}`, options);
     }, [publicRequest]);
 
-    const cancelClientAppointment = useCallback(async (appointmentId, email, reason = null) => 
+    const cancelClientAppointment = useCallback(async (appointmentId, email, phone, reason = null, options) =>
     {
-        return publicRequest(`/api/appointments/client/${appointmentId}`, 
+        return publicRequest(`/api/appointments/client/${appointmentId}`,
         {
+            ...options,
             method: 'DELETE',
-            body: JSON.stringify({ email, reason }),
+            body: JSON.stringify({ email, phone: String(phone || '').replace(/\D/g, ''), reason }),
         });
     }, [publicRequest]);
 

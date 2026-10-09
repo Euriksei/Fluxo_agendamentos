@@ -8,7 +8,7 @@ import { AgendasProvider, useAgendas } from '@/contexts/AgendasContext';
 import { AppointmentsProvider, useAppointments } from '@/contexts/AppointmentsContext';
 import { FlowsProvider, useFlows } from '@/contexts/FlowsContext';
 import { BarberProvider } from '@/contexts/BarberContext';
-import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import { SubscriptionProvider, useSubscription } from '@/contexts/SubscriptionContext';
 
 import { NotificationProvider } from '@/contexts/NotificationContext';
 
@@ -20,15 +20,20 @@ function DataLoader({ children })
     const { getAgendas, getBlocks } = useAgendas();
     const { getBarberAppointments } = useAppointments();
     const { getFlows } = useFlows();
+    const { subscription, subscriptionLoaded, hasFeature } = useSubscription();
     const [initialLoading, setInitialLoading] = useState(false);
 
     // Depend on stable primitives: `user` is a new object on every setUser (StrictMode double /me, login, profile update), which re-ran this load.
     const userId = user?.user?.id;
     const role = user?.user?.role;
 
+    // Only load what the plan includes: calling a feature outside the plan returns 403 (and a toast) for nothing.
+    const can = (feature) => !subscription || hasFeature(feature);
+    const featureKey = ['employees', 'services', 'agendas', 'appointments', 'flows'].filter(can).join(',');
+
     useEffect(() => 
     {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated || !subscriptionLoaded) return;
 
         const loadInitialData = async () => 
         {
@@ -36,8 +41,13 @@ function DataLoader({ children })
 
             try 
             {
-                if (role === 'BARBER') await Promise.all([ getEmployees(), getServices(), getAgendas(), getBlocks(), getBarberAppointments(), getFlows() ]);
-                else if (role === 'EMPLOYEE') await Promise.all([ getEmployees(), getServices(), getAgendas(), getBlocks(), getBarberAppointments() ]);
+                const loads = [];
+                if (can('employees')) loads.push(getEmployees());
+                if (can('services')) loads.push(getServices());
+                if (can('agendas')) loads.push(getAgendas(), getBlocks());
+                if (can('appointments')) loads.push(getBarberAppointments());
+                if (role === 'BARBER' && can('flows')) loads.push(getFlows());
+                if (role === 'BARBER' || role === 'EMPLOYEE') await Promise.allSettled(loads);
             } 
             catch (error) 
             {
@@ -50,7 +60,7 @@ function DataLoader({ children })
         };
 
         loadInitialData();
-    }, [isAuthenticated, userId, role]);
+    }, [isAuthenticated, userId, role, subscriptionLoaded, featureKey]);
 
     return children;
 }

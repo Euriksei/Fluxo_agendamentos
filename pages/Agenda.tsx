@@ -282,7 +282,7 @@ export default function Agenda()
                             </Select>
                         </div>
                         <div className="min-w-0">
-                            <Input type="date" value={filtroData} onChange={e => setFiltroData(e.target.value)} aria-label="Filtrar por data" fullWidth className="min-h-12 appearance-none" />
+                            <Input type="date" value={filtroData} onChange={e => setFiltroData(e.target.value)} aria-label="Filtrar por data" fullWidth className="min-h-12" />
                         </div>
                         {user?.user?.role === 'BARBER' && employees.length > 0 && (
                             <div className="col-span-2 min-w-0 sm:w-56">
@@ -647,7 +647,7 @@ export default function Agenda()
                     <div>
                         <label htmlFor="reagendar-data" className="block text-sm text-brand-gray mb-2">Nova Data</label>
                         <Input id="reagendar-data" type="date" value={reagendarData} onChange={e => { setReagendarData(e.target.value); setReagendarSlotSelecionado(null); }}
-                            min={hoje} fullWidth className="min-h-12 appearance-none" />
+                            min={hoje} fullWidth className="min-h-12" />
                     </div>
 
                     <div>

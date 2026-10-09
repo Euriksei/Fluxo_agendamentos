@@ -276,7 +276,7 @@ export default function Caixa()
                         </div>
                         <div className="min-w-0">
                             <label htmlFor="caixa-data" className="block text-sm text-brand-gray mb-1">Data</label>
-                            <Input id="caixa-data" type="date" value={form.date} onChange={e => handleChange('date', e.target.value)} fullWidth className="min-h-12 appearance-none" />
+                            <Input id="caixa-data" type="date" value={form.date} onChange={e => handleChange('date', e.target.value)} fullWidth className="min-h-12" />
                         </div>
                     </div>
 

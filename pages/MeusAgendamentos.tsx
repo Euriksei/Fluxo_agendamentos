@@ -9,7 +9,7 @@ import Input from '@/components/ui/Input';
 import TextArea from '@/components/ui/TextArea';
 import ResponsiveModal from '@/components/ui/ResponsiveModal';
 
-import { formatarMoeda, formatarData } from '@/utils';
+import { formatarMoeda, formatarData, formatarTelefone } from '@/utils';
 
 const STATUS_CONFIG =
 {
@@ -29,6 +29,9 @@ export default function MeusAgendamentos()
     const { setError, getClientAppointments, cancelClientAppointment } = useAppointments();
 
     const [email, setEmail] = useState(searchParams.get('email') || '');
+    const [telefone, setTelefone] = useState(formatarTelefone(searchParams.get('phone') || ''));
+    const [buscaErro, setBuscaErro] = useState<string | null>(null);
+    const [cancelErro, setCancelErro] = useState<string | null>(null);
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
@@ -41,9 +44,10 @@ export default function MeusAgendamentos()
     {
         e?.preventDefault();
 
-        if (!email.trim())
+        const digitos = telefone.replace(/\D/g, '');
+        if (!email.trim() || digitos.length < 10)
         {
-            setError('Digite seu email');
+            setBuscaErro('Informe o email e o telefone (com DDD) usados no agendamento.');
             return;
         }
 
@@ -51,13 +55,18 @@ export default function MeusAgendamentos()
         {
             setLoading(true);
             setError(null);
-            const data = await getClientAppointments(email.trim());
+            setBuscaErro(null);
+            const data = await getClientAppointments(email.trim(), digitos, { silent: true });
             setAppointments(data);
             setSearched(true);
         }
         catch (err)
         {
             console.error(err);
+            setAppointments([]);
+            // 404 = no booking matches this email + phone: shown as the empty state below
+            if (err?.status === 404) setSearched(true);
+            else setBuscaErro(err?.status ? (err.message || 'Não foi possível buscar.') : 'Falha de conexão. Verifique sua internet e tente novamente.');
         }
         finally
         {
@@ -66,7 +75,7 @@ export default function MeusAgendamentos()
     };
 
     // Coming from the booking confirmation (?email=...): search right away.
-    useEffect(() => { if (searchParams.get('email')) handleSearch(); }, []);
+    useEffect(() => { if (searchParams.get('email') && searchParams.get('phone')) handleSearch(); }, []);
 
     const handleCancel = async (e: React.FormEvent) =>
     {
@@ -76,7 +85,8 @@ export default function MeusAgendamentos()
         try
         {
             setLoading(true);
-            await cancelClientAppointment(cancelando.id, email.trim(), motivo.trim());
+            setCancelErro(null);
+            await cancelClientAppointment(cancelando.id, email.trim(), telefone, motivo.trim(), { silent: true });
             setAppointments(prev => prev.map(apt => apt.id === cancelando.id ? { ...apt, status: 'CANCELLED', cancelReason: motivo.trim() } : apt));
             setCancelando(null);
             setMotivo('');
@@ -84,6 +94,7 @@ export default function MeusAgendamentos()
         catch (err)
         {
             console.error(err);
+            setCancelErro(err?.status === 404 ? 'Nenhum agendamento encontrado com esses dados.' : err?.status ? (err.message || 'Não foi possível cancelar.') : 'Falha de conexão. Verifique sua internet e tente novamente.');
         }
         finally
         {
@@ -91,7 +102,7 @@ export default function MeusAgendamentos()
         }
     };
 
-    const canCancel = (apt) => { return apt.status === 'PENDING' || apt.status === 'CONFIRMED'; };
+    const canCancel= (apt) => { return apt.status === 'PENDING' || apt.status === 'CONFIRMED'; };
 
     const upcomingAppointments = appointments.filter(apt => ['PENDING', 'CONFIRMED'].includes(apt.status) && new Date(apt.appointmentDate) >= new Date(new Date().toDateString()));
     const pastAppointments = appointments.filter(apt => !['PENDING', 'CONFIRMED'].includes(apt.status) || new Date(apt.appointmentDate) < new Date(new Date().toDateString()));
@@ -100,22 +111,30 @@ export default function MeusAgendamentos()
         <div className="min-h-svh bg-brand-darker">
             <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))]">
                 <h1 className="text-2xl font-bold text-white mb-2">Meus Agendamentos</h1>
-                <p className="text-brand-gray mb-6 sm:mb-8">Digite seu email para ver seus agendamentos</p>
+                <p className="text-brand-gray mb-6 sm:mb-8">Informe o email e o telefone usados no agendamento</p>
 
-                <form onSubmit={handleSearch} role="search" className="flex flex-col gap-2 sm:flex-row mb-8">
-                    <label htmlFor="busca-email" className="sr-only">Seu email</label>
-                    <Input id="busca-email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="search"
-                        value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" fullWidth required />
+                <form onSubmit={handleSearch} role="search" className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end mb-8">
+                    <div className="min-w-0">
+                        <label htmlFor="busca-email" className="block text-sm text-brand-gray mb-1">Email</label>
+                        <Input id="busca-email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="next"
+                            value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" fullWidth required />
+                    </div>
+                    <div className="min-w-0">
+                        <label htmlFor="busca-telefone" className="block text-sm text-brand-gray mb-1">Telefone/WhatsApp</label>
+                        <Input id="busca-telefone" type="tel" inputMode="tel" autoComplete="tel" enterKeyHint="search" maxLength={15}
+                            value={telefone} onChange={e => setTelefone(formatarTelefone(e.target.value))} placeholder="(00) 00000-0000" fullWidth required />
+                    </div>
                     <Button type="submit" disabled={loading} className="sm:shrink-0" >
                         <Search size={16} aria-hidden="true" />
                         {loading ? 'Buscando...' : 'Buscar'}
                     </Button>
+                    {buscaErro && <p role="alert" className="sm:col-span-3 text-sm text-red-400">{buscaErro}</p>}
                 </form>
 
                 {searched && appointments.length === 0 && (
                     <div className="text-center py-12 bg-brand-dark rounded-lg">
                         <Calendar size={48} className="mx-auto text-brand-gray mb-4" aria-hidden="true" />
-                        <p className="text-brand-gray">Nenhum agendamento encontrado para este email</p>
+                        <p className="text-brand-gray">Nenhum agendamento encontrado com esses dados</p>
                     </div>
                 )}
 
@@ -160,7 +179,7 @@ export default function MeusAgendamentos()
                                         </div>
 
                                         {canCancel(apt) && (
-                                            <Button onClick={() => { setMotivo(''); setCancelando(apt); }} variant="outline" disabled={loading} className="shrink-0 px-4!" >
+                                            <Button onClick={() => { setMotivo(''); setCancelErro(null); setCancelando(apt); }}variant="outline" disabled={loading} className="shrink-0 px-4!" >
                                                 <X size={14} aria-hidden="true" />
                                                 Cancelar
                                             </Button>
@@ -218,6 +237,7 @@ export default function MeusAgendamentos()
                         <TextArea id="motivo-cancelamento" value={motivo} onChange={e => setMotivo(e.target.value)} rows={3} maxLength={255} required fullWidth
                             placeholder="Ex: imprevisto no trabalho" />
                     </div>
+                    {cancelErro && <p role="alert" className="text-sm text-red-400">{cancelErro}</p>}
                 </ResponsiveModal>
             )}
         </div>

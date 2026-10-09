@@ -12,7 +12,7 @@ import { DIAS_SEMANA, INTERVALO_OPCOES } from '@/types';
 import { formatarData, formatarHora, formatarIntervalo, hojeLocal } from '@/utils';
 
 // 16px text (no iOS zoom on focus), 48px tall, min-w-0 so native time/date inputs can shrink inside the 2-column grid on 360px screens
-const CAMPO = 'min-w-0 min-h-12 text-base appearance-none';
+const CAMPO = 'min-w-0 min-h-12 text-base';
 
 const DIA_LETRA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const ATALHOS_DIAS = [ { label: 'Seg a Sex', days: [1, 2, 3, 4, 5] }, { label: 'Seg a Sáb', days: [1, 2, 3, 4, 5, 6] }, { label: 'Todos', days: [0, 1, 2, 3, 4, 5, 6] } ];
@@ -26,6 +26,7 @@ export default function Horarios()
     const [modalAberto, setModalAberto] = useState(false);
     const [modalTipo, setModalTipo] = useState('agenda');
     const [editandoId, setEditandoId] = useState(null);
+    const [salvando, setSalvando] = useState(false);
 
     const [formAgenda, setFormAgenda] = useState({ dayOfWeek: 1, startTime: '09:00', endTime: '18:00', lunchStart: '12:00', lunchEnd: '13:00', hasLunch: false, slotDuration: 30 });
 
@@ -85,9 +86,11 @@ export default function Horarios()
             return;
         }
 
+        if (salvando) return;
+
         try
         {
-            setLoading(true);
+            setSalvando(true);
             setFormError(null);
 
             const base = { startTime: formAgenda.startTime, endTime: formAgenda.endTime, slotDuration: formAgenda.slotDuration,
@@ -117,7 +120,7 @@ export default function Horarios()
         } 
         finally 
         {
-            setLoading(false);
+            setSalvando(false);
         }
     };
 
@@ -194,27 +197,6 @@ export default function Horarios()
                         Configurar Dia
                     </Button>
                 </div>
-            </div>
-
-            <div className="grid gap-2 grid-cols-7 mb-8">
-                {DIAS_SEMANA.map(dia => 
-                {
-                    const agenda = agendas.find(a => a.dayOfWeek === dia.value);
-                    return (
-                        <div key={dia.value} className={`p-3 rounded-lg text-center ${agenda ? 'bg-brand-purple/20 border border-brand-purple/30' : 'bg-brand-dark border border-white/5' }`} >
-
-                            <p className={`text-sm font-bold ${agenda ? 'text-brand-purple' : 'text-brand-gray'}`}>
-                                {dia.short}
-                            </p>
-
-                            {agenda && (
-                                <p className="text-xs mt-1">
-                                    {agenda.startTime.slice(0, 5)}
-                                </p>
-                            )}
-                        </div>
-                    );
-                })}
             </div>
 
             <div className="flex gap-4 mb-6 border-b border-white/10">
@@ -392,7 +374,7 @@ export default function Horarios()
                     footer={
                         <>
                             <Button type="button" onClick={closeModal} variant="outline" fullWidth>Cancelar</Button>
-                            <Button type="submit" disabled={loading} fullWidth>{loading ? 'Salvando...' : 'Salvar'}</Button>
+                            <Button type="submit" disabled={salvando} fullWidth>{salvando ? 'Salvando...' : 'Salvar'}</Button>
                         </>
                     }>
                     {editandoId

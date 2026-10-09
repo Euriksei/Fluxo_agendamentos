@@ -3,8 +3,10 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, LogOut, Menu, X } from 'lucide-react';
 
 import { NavLink } from '@/components/NavLink';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
-export type SidebarItem = { to: string; label: string; icon: Parameters<typeof NavLink>[0]['icon'] };
+// feature: plan feature slug; when the plan lacks it the item shows a lock (the page itself shows the upgrade screen)
+export type SidebarItem = { to: string; label: string; icon: Parameters<typeof NavLink>[0]['icon']; feature?: string };
 
 type SidebarLayoutProps =
 {
@@ -32,6 +34,7 @@ const readExpanded = (key: string) =>
 export default function SidebarLayout({ title, subtitle, items, onLogout, storageKey }: SidebarLayoutProps)
 {
     const location = useLocation();
+    const { subscription, subscriptionLoaded, hasFeature } = useSubscription();
     const drawerId = useId();
 
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -111,7 +114,8 @@ export default function SidebarLayout({ title, subtitle, items, onLogout, storag
     };
 
     const navList = (collapsed: boolean) => items.map(item => (
-        <NavLink key={item.to} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed} />
+        <NavLink key={item.to} to={item.to} label={item.label} icon={item.icon} collapsed={collapsed}
+            locked={Boolean(item.feature) && subscriptionLoaded && Boolean(subscription) && !hasFeature(item.feature)} />
     ));
 
     return (

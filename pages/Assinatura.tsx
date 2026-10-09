@@ -21,7 +21,10 @@ export default function Assinatura()
 {
     const { subscription, plans, payments, loading, actionLoading, fetchPlans, fetchPayments, getPaymentDetails, syncSubscription, createSubscription, 
         createSubscriptionWithCreditCard, startTrial, convertTrial, updateSubscription, updateCreditCard, cancelSubscription, isTrialExpired, getTrialDaysRemaining, 
-            hasActiveSubscription } = useSubscription();
+            hasActiveSubscription, getPendingPlanChange } = useSubscription();
+
+    // Upgrade waiting for payment confirmation (plan only changes after the payment is confirmed)
+    const trocaPendente = getPendingPlanChange();
 
     const [modalNovaAssinatura, setModalNovaAssinatura] = useState(false);
     const [modalTrocarPlano, setModalTrocarPlano] = useState(false);
@@ -37,6 +40,7 @@ export default function Assinatura()
 
     const [pagamentoSelecionado, setPagamentoSelecionado] = useState(null);
     const [detalhesPagamento, setDetalhesPagamento] = useState(null);
+    const [linkPagamento, setLinkPagamento] = useState<string | null>(null);
 
     const [formCartao, setFormCartao] = useState({ holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '' });
     const [formTitular, setFormTitular] = useState({ name: '', email: '', cpfCnpj: '', phone: '', postalCode: '', addressNumber: '' });
@@ -197,17 +201,32 @@ export default function Assinatura()
     {
         if (!planoSelecionado) return;
 
+        setErro('');
         const result = await updateSubscription(planoSelecionado.id, true);
-        
-        if (result.success) 
+
+        if (result.success)
         {
-            setSucesso('Plano alterado com sucesso!');
+            const pendente = getPendingPlanChange(result.data);
             setModalTrocarPlano(false);
             setPlanoSelecionado(null);
-        } 
-        else 
+
+            if (pendente)
+            {
+                setSucesso(`Aguardando confirmação do pagamento para o plano ${pendente.name}. O plano muda assim que o pagamento for confirmado.`);
+                setLinkPagamento(pendente.payment?.invoiceUrl || null);
+            }
+            else setSucesso('Plano alterado com sucesso!');
+        }
+        else if (result.code === 'EMPLOYEE_LIMIT')
         {
-            setErro(result.error);
+            const { current = 0, max = 0 } = result.data || {};
+            const remover = Math.max(1, current - max);
+            const plural = (n) => (n === 1 ? 'profissional' : 'profissionais');
+            setErro(`Seu plano novo permite até ${max} ${plural(max)}. Remova ${remover} ${plural(remover)} antes de trocar.`);
+        }
+        else
+        {
+            setErro(result.error || 'Não foi possível trocar o plano.');
         }
     };
 
@@ -273,7 +292,9 @@ export default function Assinatura()
     const statusConfig = SUBSCRIPTION_STATUS_CONFIG[subscription?.status] || SUBSCRIPTION_STATUS_CONFIG.NONE;
     const StatusIcon = statusConfig.icon;
 
-    const planosFiltrados = plans.filter(p => p.slug !== 'free' && p.id !== subscription?.plan?.id);
+    // Contracted plan (what the user pays) vs plan (effective: features/limits in force). Falls back to plan until the API sends contractedPlan.
+    const planoContratado = subscription?.contractedPlan ?? subscription?.plan;
+    const planosFiltrados = plans.filter(p => p.slug !== 'free' && p.id !== planoContratado?.id);
 
     const parseFeatures = (features) => 
     {
@@ -301,9 +322,28 @@ export default function Assinatura()
             </div>
 
             {sucesso && (
-                <div role="status" className="bg-green-500/20 border border-green-500/50 text-green-400 p-4 rounded-lg mb-6 flex items-center gap-2">
-                    <Check size={20} />
-                    {sucesso}
+                <div role="status" className="bg-green-500/20 border border-green-500/50 text-green-400 p-4 rounded-lg mb-6 flex flex-wrap items-center gap-2">
+                    <Check size={20} aria-hidden="true" className="shrink-0" />
+                    <span className="min-w-0 flex-1">{sucesso}</span>
+                    {linkPagamento && (
+                        <a href={linkPagamento} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-gradient-to-r from-brand-blue to-brand-purple px-4 font-semibold text-white sm:w-auto">
+                            Pagar agora
+                        </a>
+                    )}
+                </div>
+            )}
+
+            {trocaPendente && !sucesso && (
+                <div role="status" className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 flex flex-wrap items-center gap-3">
+                    <Clock size={20} className="shrink-0 text-yellow-400" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-white font-medium">Aguardando confirmação do pagamento</p>
+                        <p className="text-yellow-400 text-sm">
+                            A troca para o plano {trocaPendente.name} será aplicada assim que o pagamento for confirmado.
+                        </p>
+                    </div>
+                    <Button onClick={() => fetchPayments()} size="sm" variant="secondary" className="w-full sm:w-auto">Ver cobranças</Button>
                 </div>
             )}
 
@@ -316,7 +356,7 @@ export default function Assinatura()
                         </div>
                         <div>
                             <h2 className="text-white text-xl font-bold">
-                                {subscription?.plan?.name || 'Sem Plano'}
+                                {planoContratado?.name || 'Sem Plano'}
                             </h2>
                             <span className={`inline-block text-xs px-2 py-1 rounded mt-1 ${statusConfig.color}`}>
                                 {statusConfig.label}
@@ -324,11 +364,11 @@ export default function Assinatura()
                         </div>
                     </div>
 
-                    {subscription?.plan?.price > 0 && (
+                    {planoContratado?.price > 0 && (
                         <div className="md:text-right">
                             <p className="text-brand-gray text-sm">Valor mensal</p>
                             <p className="text-brand-blue text-2xl font-bold">
-                                {formatarMoeda(subscription.plan.price)}
+                                {formatarMoeda(planoContratado.price)}
                             </p>
                         </div>
                     )}
@@ -577,7 +617,7 @@ export default function Assinatura()
                     }>
                     <div className="bg-white/5 rounded-lg p-4">
                         <p className="text-brand-gray text-sm">Plano atual:</p>
-                        <p className="text-white font-semibold">{subscription?.plan?.name}</p>
+                        <p className="text-white font-semibold">{planoContratado?.name}</p>
                     </div>
 
                     <div className="space-y-3">
@@ -606,7 +646,7 @@ export default function Assinatura()
                     }>
                     <div className="bg-white/5 rounded-lg p-4">
                         <p className="text-brand-gray text-sm">Plano:</p>
-                        <p className="text-white font-semibold">{subscription?.plan?.name} - {formatarMoeda(subscription?.plan?.price)}/mês</p>
+                        <p className="text-white font-semibold">{planoContratado?.name} - {formatarMoeda(planoContratado?.price)}/mês</p>
                     </div>
 
                     <BillingTypePicker value={billingType} onChange={setBillingType} />

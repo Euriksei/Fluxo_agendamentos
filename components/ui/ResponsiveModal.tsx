@@ -61,11 +61,22 @@ export default function ResponsiveModal({ title, onClose, onSubmit, footer, chil
     }, []);
 
     // Keep the focused field visible when the on-screen keyboard shrinks the viewport.
+    // Only for fields that open the keyboard: time/date/select open a native picker dialog on Android, and scrolling
+    // the sheet while that dialog is up can dismiss it before the value is committed.
     const onFocusCapture = (e: React.FocusEvent) =>
     {
         const el = e.target as HTMLElement;
-        if (!el.matches('input, select, textarea')) return;
-        window.setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+        if (!el.matches('textarea, input:is([type=text], [type=email], [type=tel], [type=number], [type=password], [type=search], [type=url], :not([type]))')) return;
+        window.setTimeout(() => { if (document.activeElement === el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 300);
+    };
+
+    // Native validation must never fail silently inside the scrollable sheet: bring the first invalid field into view
+    // so the browser bubble is visible.
+    const onInvalidCapture = (e: React.FormEvent) =>
+    {
+        const el = e.target as HTMLElement;
+        const form = el.closest('form');
+        if (form && form.querySelector(':invalid') === el) el.scrollIntoView({ block: 'center' });
     };
 
     const content = (
@@ -100,7 +111,7 @@ export default function ResponsiveModal({ title, onClose, onSubmit, footer, chil
                     </div>
 
                     {onSubmit
-                        ? <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">{content}</form>
+                        ? <form onSubmit={onSubmit} onInvalidCapture={onInvalidCapture} className="flex min-h-0 flex-1 flex-col">{content}</form>
                         : <div className="flex min-h-0 flex-1 flex-col">{content}</div>}
                 </div>
             </div>

@@ -16,13 +16,13 @@ export default function Layout()
     const items: SidebarItem[] = 
     [
         { to: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-        { to: '/agenda', label: 'Agenda', icon: 'Calendar' },
-        { to: '/horarios', label: 'Horários', icon: 'Clock' },
+        { to: '/agenda', label: 'Agenda', icon: 'Calendar', feature: 'appointments' },
+        { to: '/horarios', label: 'Horários', icon: 'Clock', feature: 'agendas' },
         ...(role === 'BARBER' ? 
         [
-            { to: '/caixa', label: 'Caixa', icon: 'DollarSign' },
-            { to: '/servicos', label: 'Serviços', icon: 'Toolbox' },
-            { to: '/equipe', label: 'Equipe', icon: 'Users' },
+            { to: '/caixa', label: 'Caixa', icon: 'DollarSign', feature: 'flows' },
+            { to: '/servicos', label: 'Serviços', icon: 'Toolbox', feature: 'services' },
+            { to: '/equipe', label: 'Equipe', icon: 'Users', feature: 'employees' },
             { to: '/assinatura', label: 'Assinatura', icon: 'CreditCard' },
         ] as SidebarItem[] : []),
     ];
