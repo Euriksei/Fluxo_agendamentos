@@ -13,6 +13,7 @@ import TextArea from '@/components/ui/TextArea';
 import { formatarDataCompleta, formatarMoeda, formatarTelefone, formatDateLocal } from '@/utils';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const ETAPAS = ['Serviço', 'Profissional', 'Data', 'Horário', 'Dados', 'Confirmar'];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function Agendar() 
@@ -369,7 +370,7 @@ export default function Agendar()
                                     <RotateCw size={16} aria-hidden="true" /> Tentar de novo
                                 </Button>
                             )}
-                            <Link to="/" className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold border border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple">
+                            <Link to="/" className="inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold border border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple">
                                 Ir para o início
                             </Link>
                         </div>
@@ -390,11 +391,11 @@ export default function Agendar()
 
     return (
         <div className="min-h-screen bg-brand-darker">
-            <div className="bg-brand-dark border-b border-white/10 p-6">
+            <div className="bg-brand-dark border-b border-white/10 px-4 py-4 sm:p-6 pt-[calc(1rem+env(safe-area-inset-top))]">
                 <div className="max-w-2xl mx-auto">
                     {barber && (
                         <div className="flex items-center justify-center">
-                            <h1 className="text-2xl font-bold text-white">
+                            <h1 className="text-2xl font-bold text-white text-center break-words">
                                 {barber.shop}
                             </h1>
                         </div>
@@ -402,30 +403,36 @@ export default function Agendar()
                 </div>
             </div>
 
-            <div className="max-w-2xl mx-auto px-6 py-4">
-                <div className="flex items-center justify-center mb-8">
-                    {['Serviço', 'Profissional', 'Data', 'Horário', 'Dados', 'Confirmar'].map((label, index) =>
-                    {
-                        const stepNum = index + 1;
-                        const isActive = step === stepNum;
-                        const isCompleted = step > stepNum;
-                        
-                        return (
-                            <div key={label} className="flex items-center">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
-                                        ${isCompleted ? 'bg-green-500 text-white' : isActive ? 'bg-brand-purple text-white' : 'bg-white/10 text-brand-gray'}`}>
-                                    {isCompleted ? <Check size={16} /> : stepNum}
-                                </div>
-                                <span className={`ml-2 text-sm hidden sm:block ${isActive ? 'text-white' : 'text-brand-gray'}`}>
-                                    {label}
-                                </span>
-                                {index < 5 && (
-                                    <div className={`w-4 sm:w-8 h-0.5 mx-2 ${isCompleted ? 'bg-green-500' : 'bg-white/10'}`} />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
+            <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4">
+                {step <= 6 && (
+                    <nav aria-label="Etapas do agendamento" className="mb-6 sm:mb-8">
+                        <ol className="flex items-center">
+                            {ETAPAS.map((label, index) =>
+                            {
+                                const stepNum = index + 1;
+                                const isActive = step === stepNum;
+                                const isCompleted = step > stepNum;
+
+                                return (
+                                    <li key={label} className={`flex items-center ${index < ETAPAS.length - 1 ? 'flex-1' : ''}`} aria-current={isActive ? 'step' : undefined}>
+                                        <div className={`size-8 shrink-0 rounded-full flex items-center justify-center text-sm font-medium
+                                                ${isCompleted ? 'bg-green-500 text-white' : isActive ? 'bg-brand-purple text-white' : 'bg-white/10 text-brand-gray'}`}>
+                                            {isCompleted ? <Check size={16} aria-hidden="true" /> : stepNum}
+                                            <span className="sr-only">{label}{isCompleted ? ' (concluída)' : ''}</span>
+                                        </div>
+                                        <span className={`ml-2 text-sm hidden md:block ${isActive ? 'text-white' : 'text-brand-gray'}`} aria-hidden="true">
+                                            {label}
+                                        </span>
+                                        {index < ETAPAS.length - 1 && (
+                                            <div aria-hidden="true" className={`flex-1 min-w-2 h-0.5 mx-1 sm:mx-2 ${isCompleted ? 'bg-green-500' : 'bg-white/10'}`} />
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ol>
+                        <p className="mt-2 text-center text-xs text-brand-gray md:hidden">Etapa {step} de 6 · {ETAPAS[step - 1]}</p>
+                    </nav>
+                )}
 
                 {step === 1 && (
                     <div>
@@ -438,16 +445,16 @@ export default function Agendar()
                                 {services.map(service => (
                                     <button key={service.id} onClick={() => selectService(service)} className="cursor-pointer w-full p-4 bg-brand-dark border border-white/10 
                                             rounded-lg text-left hover:border-brand-purple/50 transition-colors" >
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="text-white font-medium">{service.name}</h3>
-                                                <p className="text-brand-gray text-sm mt-1">{service.description}</p>
+                                        <div className="flex justify-between items-start gap-3">
+                                            <div className="min-w-0">
+                                                <h3 className="text-white font-medium break-words">{service.name}</h3>
+                                                <p className="text-brand-gray text-sm mt-1 break-words">{service.description}</p>
                                                 <p className="text-brand-gray text-sm mt-2">
                                                     <Clock size={14} className="inline mr-1" />
                                                     {service.duration} min
                                                 </p>
                                             </div>
-                                            <span className="text-brand-purple font-bold text-lg">
+                                            <span className="shrink-0 text-brand-purple font-bold text-lg">
                                                 {formatarMoeda(service.value)}
                                             </span>
                                         </div>
@@ -466,7 +473,7 @@ export default function Agendar()
 
                 {step === 2 && (
                     <div>
-                        <button onClick={goBack} className="text-brand-gray hover:text-white mb-4 flex items-center gap-1 cursor-pointer">
+                        <button type="button" onClick={goBack} className="-ml-2 mb-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-brand-gray hover:text-white cursor-pointer">
                             <ChevronLeft size={16} /> Voltar
                         </button>
 
@@ -515,42 +522,43 @@ export default function Agendar()
 
                 {step === 3 && (
                     <div>
-                        <button onClick={goBack} className="text-brand-gray hover:text-white mb-4 flex items-center gap-1 cursor-pointer">
+                        <button type="button" onClick={goBack} className="-ml-2 mb-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-brand-gray hover:text-white cursor-pointer">
                             <ChevronLeft size={16} /> Voltar
                         </button>
                         
                         <h2 className="text-xl font-semibold text-white mb-4">Escolha a Data</h2>
                         
-                        <div className="bg-brand-dark rounded-lg p-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <button onClick={mesAnterior} aria-label="Mês anterior" title="Mês anterior" className="p-2 hover:bg-white/10 rounded cursor-pointer">
+                        <div className="bg-brand-dark rounded-lg px-1 py-4 sm:p-6">
+                            <div className="flex justify-between items-center mb-4 px-2 sm:px-0 sm:mb-6">
+                                <button type="button" onClick={mesAnterior} aria-label="Mês anterior" title="Mês anterior" className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer">
                                     <ChevronLeft size={20} className="text-white" />
                                 </button>
                                 <h3 className="text-lg font-semibold text-white">
                                     {MESES[mesAtual.getMonth()]} {mesAtual.getFullYear()}
                                 </h3>
-                                <button onClick={proximoMes} aria-label="Próximo mês" title="Próximo mês" className="p-2 hover:bg-white/10 rounded cursor-pointer">
+                                <button type="button" onClick={proximoMes} aria-label="Próximo mês" title="Próximo mês" className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer">
                                     <ChevronRight size={20} className="text-white" />
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-7 gap-1 mb-2">
+                            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
                                 {DIAS_SEMANA.map((dia, index) => (
-                                    <div key={dia} className={`text-center text-sm py-2 ${barberWorksOnDay(index) ? 'text-brand-purple font-medium' : 'text-brand-gray'}`} >
+                                    <div key={dia} className={`text-center text-xs sm:text-sm py-2${barberWorksOnDay(index) ? 'text-brand-purple font-medium' : 'text-brand-gray'}`} >
                                         {dia}
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="grid grid-cols-7 gap-1">
+                            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
                                 {getDiasDoMes().map((item, index) => 
                                 {
                                     const isAvailable = isDateAvailable(item.date, item.isCurrentMonth);
                                     const isToday = item.date.toDateString() === hoje.toDateString();
                                     
                                     return (
-                                        <button key={index} onClick={() => isAvailable && selectDate(item.date)} disabled={!isAvailable}
-                                            className={`cursor-pointer p-3 rounded-lg text-sm transition-colors ${!item.isCurrentMonth ? 'text-brand-gray/20' : ''}
+                                        <button key={index} type="button" onClick={() => isAvailable && selectDate(item.date)} disabled={!isAvailable}
+                                            aria-label={`${item.date.getDate()} de ${MESES[item.date.getMonth()]}${isAvailable ? '' : ' (indisponível)'}`}
+                                            className={`cursor-pointer min-h-11 min-w-0 rounded-lg text-sm transition-colors${!item.isCurrentMonth ? 'text-brand-gray/20' : ''}
                                                 ${item.isCurrentMonth && !isAvailable ? 'text-brand-gray/40 cursor-not-allowed' : ''}
                                                     ${isAvailable ? 'text-white hover:bg-brand-purple/30 cursor-pointer bg-brand-purple/10' : ''}
                                                         ${isToday && isAvailable ? 'ring-2 ring-brand-purple' : ''}`}>
@@ -565,7 +573,7 @@ export default function Agendar()
 
                 {step === 4 && (
                     <div>
-                        <button onClick={goBack} className="text-brand-gray hover:text-white mb-4 flex items-center gap-1 cursor-pointer">
+                        <button type="button" onClick={goBack} className="-ml-2 mb-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-brand-gray hover:text-white cursor-pointer">
                             <ChevronLeft size={16} /> Voltar
                         </button>
                         
@@ -575,7 +583,7 @@ export default function Agendar()
                         {slotsLoading 
                         ? 
                         (
-                            <div className="text-center py-12 text-brand-gray">
+                            <div className="text-center py-12 text-brand-gray" role="status">
                                 Carregando horários...
                             </div>
                         ) 
@@ -584,8 +592,9 @@ export default function Agendar()
                         ? (
                             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                                 {slots.map((slot, index) => (
-                                    <button key={index} onClick={() => slot.available && selectSlot(slot.startTime)} disabled={!slot.available}
-                                        className={`cursor-pointer p-3 rounded-lg text-sm font-medium transition-colors
+                                    <button key={index} type="button" onClick={() => slot.available && selectSlot(slot.startTime)} disabled={!slot.available}
+                                        aria-label={`${slot.startTime.slice(0, 5)}${slot.available ? '' : ' (ocupado)'}`}
+                                        className={`cursor-pointer min-h-11 rounded-lg text-sm font-medium transition-colors
                                             ${!slot.available ? 'bg-white/5 text-brand-gray/50 cursor-not-allowed line-through' 
                                                 : 'bg-brand-dark border border-white/10 text-white hover:border-brand-purple hover:bg-brand-purple/20'}`}>
                                         {slot.startTime.slice(0, 5)}
@@ -608,7 +617,7 @@ export default function Agendar()
 
                 {step === 5 && (
                     <div>
-                        <button onClick={goBack} className="text-brand-gray hover:text-white mb-4 flex items-center gap-1 cursor-pointer">
+                        <button type="button" onClick={goBack} className="-ml-2 mb-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-brand-gray hover:text-white cursor-pointer">
                             <ChevronLeft size={16} /> Voltar
                         </button>
                         
@@ -621,7 +630,7 @@ export default function Agendar()
                                     <User size={14} aria-hidden="true" className="inline mr-1" />
                                     Nome completo *
                                 </label>
-                                <Input id="cliente-nome" type="text" autoComplete="name" value={clientData.name} placeholder="Seu nome" fullWidth required
+                                <Input id="cliente-nome" type="text" autoComplete="name" autoCapitalize="words" enterKeyHint="next"value={clientData.name} placeholder="Seu nome" fullWidth required
                                     onChange={e => handleClientDataChange('name', e.target.value)} />
                             </div>
 
@@ -630,7 +639,7 @@ export default function Agendar()
                                     <Mail size={14} aria-hidden="true" className="inline mr-1" />
                                     Email *
                                 </label>
-                                <Input id="cliente-email" type="email" autoComplete="email" value={clientData.email} placeholder="seu@email.com" fullWidth required
+                                <Input id="cliente-email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="next"value={clientData.email} placeholder="seu@email.com" fullWidth required
                                     onChange={e => handleClientDataChange('email', e.target.value)} />
                             </div>
 
@@ -639,7 +648,7 @@ export default function Agendar()
                                     <Phone size={14} aria-hidden="true" className="inline mr-1" />
                                     Telefone/WhatsApp *
                                 </label>
-                                <Input id="cliente-telefone" type="tel" autoComplete="tel" value={clientData.phone} placeholder="(00) 00000-0000" fullWidth required
+                                <Input id="cliente-telefone" type="tel" inputMode="tel" autoComplete="tel" enterKeyHint="next"value={clientData.phone} placeholder="(00) 00000-0000" fullWidth required
                                     onChange={e => handleClientDataChange('phone', e.target.value)} />
                             </div>
 
@@ -651,42 +660,44 @@ export default function Agendar()
                                     onChange={e => handleClientDataChange('notes', e.target.value)} />
                             </div>
 
-                            <Button onClick={goToConfirmation} fullWidth>
-                                Continuar
-                            </Button>
+                            <div className='sticky bottom-0 z-10 -mx-4 mt-6 border-t border-white/10 bg-brand-darker/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none'>
+                                <Button onClick={goToConfirmation} fullWidth>
+                                    Continuar
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {step === 6 && (
                     <div>
-                        <button onClick={goBack} className="text-brand-gray hover:text-white mb-4 flex items-center gap-1 cursor-pointer">
+                        <button type="button" onClick={goBack} className="-ml-2 mb-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-brand-gray hover:text-white cursor-pointer">
                             <ChevronLeft size={16} /> Voltar
                         </button>
                         
                         <h2 className="text-xl font-semibold text-white mb-4">Confirme seu Agendamento</h2>
                         
-                        <div className="bg-brand-dark rounded-lg p-6 space-y-4 mb-6">
+                        <div className="bg-brand-dark rounded-lg p-4 sm:p-6 space-y-4">
                             <div className="pb-4 border-b border-white/10">
                                 <p className="text-brand-gray text-sm mb-1">Cliente</p>
                                 <p className="text-white font-medium">{clientData.name}</p>
-                                <p className="text-brand-gray text-sm">{clientData.email}</p>
+                                <p className="text-brand-gray text-sm break-all">{clientData.email}</p>
                                 <p className="text-brand-gray text-sm">{clientData.phone}</p>
                             </div>
 
-                            <div className="flex justify-between">
+                            <div className="flex justify-between gap-3">
                                 <span className="text-brand-gray">Serviço</span>
-                                <span className="text-white font-medium">{selectedService.name}</span>
+                                <span className="text-white font-medium text-right break-words min-w-0">{selectedService.name}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between gap-3">
                                 <span className="text-brand-gray">Data</span>
                                 <span className="inline-block text-white first-letter:uppercase">{formatarDataCompleta(selectedDate)}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between gap-3">
                                 <span className="text-brand-gray">Horário</span>
                                 <span className="text-white">{selectedSlot.slice(0, 5)}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between gap-3">
                                 <span className="text-brand-gray">Duração</span>
                                 <span className="text-white">{selectedService.duration} min</span>
                             </div>
@@ -699,15 +710,17 @@ export default function Agendar()
                             )}
 
                             <hr className="border-white/10" />
-                            <div className="flex justify-between">
+                            <div className="flex justify-between gap-3">
                                 <span className="text-brand-gray">Valor</span>
                                 <span className="text-brand-purple font-bold text-lg">{formatarMoeda(selectedService.value)}</span>
                             </div>
                         </div>
 
-                        <Button onClick={handleSubmit} disabled={submitting} fullWidth>
-                            {submitting ? 'Agendando...' : 'Confirmar Agendamento'}
-                        </Button>
+                        <div className='sticky bottom-0 z-10 -mx-4 mt-6 border-t border-white/10 bg-brand-darker/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none'>
+                            <Button onClick={handleSubmit} disabled={submitting} fullWidth>
+                                {submitting ? 'Agendando...' : 'Confirmar Agendamento'}
+                            </Button>
+                        </div>
                     </div>
                 )}
 
@@ -721,21 +734,21 @@ export default function Agendar()
                             Enviamos os detalhes para o seu email. Aguarde a confirmação do profissional.
                         </p>
                         
-                        <div className="bg-brand-dark rounded-lg p-6 text-left mb-6">
+                        <div className="bg-brand-dark rounded-lg p-4 sm:p-6 text-left mb-6">
                             <div className="space-y-3">
-                                <div className="flex justify-between">
+                                <div className="flex justify-between gap-3">
                                     <span className="text-brand-gray">Serviço</span>
-                                    <span className="text-white">{selectedService.name}</span>
+                                    <span className="text-white text-right break-words min-w-0">{selectedService.name}</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between gap-3">
                                     <span className="text-brand-gray">Data</span>
                                     <span className="inline-block text-white first-letter:uppercase">{formatarDataCompleta(selectedDate)}</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between gap-3">
                                     <span className="text-brand-gray">Horário</span>
                                     <span className="text-white">{selectedSlot.slice(0, 5)}</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between gap-3">
                                     <span className="text-brand-gray">Valor</span>
                                     <span className="text-brand-purple font-bold">{formatarMoeda(selectedService.value)}</span>
                                 </div>
@@ -746,7 +759,7 @@ export default function Agendar()
                             Para ver ou cancelar seus agendamentos, acesse usando seu email:
                         </p>
 
-                        <Button onClick={() => navigate(`/meus-agendamentos?email=${clientData.email}`)} variant="outline" fullWidth>
+                        <Button onClick={() => navigate(`/meus-agendamentos?email=${encodeURIComponent(clientData.email)}`)} variant="outline" fullWidth>
                             Ver Meus Agendamentos
                         </Button>
                     </div>

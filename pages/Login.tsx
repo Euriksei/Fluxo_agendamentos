@@ -80,7 +80,7 @@ export default function Login()
                     <CardFooter className="justify-center">
                         <p className="text-sm text-brand-gray">
                             Ainda não possui conta?{' '}
-                            <a href="/registro" className="gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60">
+                            <a href="/registro" className="inline-flex min-h-11 items-center px-1 gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60">
                                 Criar conta
                             </a>
                         </p>

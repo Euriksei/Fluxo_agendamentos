@@ -114,7 +114,7 @@ export default function Register()
                     <CardFooter className="justify-center">
                         <p className="text-sm text-brand-gray">
                             Já possui conta?{' '}
-                            <a href="/login" className="gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60">
+                            <a href="/login" className="inline-flex min-h-11 items-center px-1 gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60">
                                 Fazer login
                             </a>
                         </p>

@@ -5,6 +5,7 @@ import { useApi } from '@/hooks/useApi';
 import { Edit, Check, Users, Star } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
+import ResponsiveModal from '@/components/ui/ResponsiveModal';
 import Input from '@/components/ui/Input';
 
 import { PLAN_ICONS, PLAN_FEATURE_LABELS, PLAN_ALL_FEATURES } from '@/types';
@@ -122,8 +123,8 @@ export default function AdminPlanos()
                                         'text-brand-gray'} />
                                 </div>
                                 <button 
-                                    onClick={() => openModal(plan)}
-                                    className="p-2 hover:bg-white/10 rounded text-brand-gray hover:text-white"
+                                    onClick={() => openModal(plan)} aria-label={`Editar plano ${plan.name}`}
+                                    className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg text-brand-gray hover:text-white"
                                 >
                                     <Edit size={18} />
                                 </button>
@@ -173,11 +174,11 @@ export default function AdminPlanos()
 
                             <div className="mt-4 pt-4 border-t border-white/10">
                                 <span className={`text-xs px-2 py-1 rounded ${
-                                    plan.isActive !== false 
+                                    (plan.isActive == null || Boolean(plan.isActive)) 
                                         ? 'bg-green-500/20 text-green-500' 
                                         : 'bg-red-500/20 text-red-500'
                                 }`}>
-                                    {plan.isActive !== false ? 'Ativo' : 'Inativo'}
+                                    {(plan.isActive == null || Boolean(plan.isActive)) ? 'Ativo' : 'Inativo'}
                                 </span>
                             </div>
                         </div>
@@ -186,11 +187,7 @@ export default function AdminPlanos()
             </div>
 
             {modalAberto && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={closeModal}>
-                    <div className="bg-brand-dark border border-white/10 rounded-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-xl font-bold text-white mb-6">
-                            {editandoId ? 'Editar Plano' : 'Novo Plano'}
-                        </h2>
+                <ResponsiveModal title={editandoId ? 'Editar Plano' : 'Novo Plano'} onClose={closeModal}>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -230,7 +227,7 @@ export default function AdminPlanos()
                             <div>
                                 <label className="block text-sm text-brand-gray mb-1">Descrição Longa</label>
                                 <textarea value={formData.about} onChange={e => setFormData({ ...formData, about: e.target.value })} placeholder="Descrição completa dos planos"
-                                    className='w-full px-4 py-3 rounded-xl text-white bg-brand-black border border-white/10 transition-colors duration-200 focus:outline-none 
+                                    className='w-full min-w-0 px-4 py-3 rounded-xl text-base text-white bg-brand-black border border-white/10 transition-colors duration-200 focus:outline-none 
                                         focus:ring-2 focus:ring-brand-blue focus:border-transparent placeholder-brand-gray' />
                             </div>
 
@@ -238,6 +235,7 @@ export default function AdminPlanos()
                                 <div>
                                     <label className="block text-sm text-brand-gray mb-1">Preço Mensal</label>
                                     <Input
+                                        inputMode="numeric"
                                         value={formData.price}
                                         onChange={e => handlePriceChange(e.target.value)}
                                         placeholder="R$ 0,00"
@@ -248,6 +246,7 @@ export default function AdminPlanos()
                                     <label className="block text-sm text-brand-gray mb-1">Máx. Funcionários</label>
                                     <Input
                                         type="number"
+                                        inputMode="numeric"
                                         value={formData.maxEmployees}
                                         onChange={e => setFormData({ ...formData, maxEmployees: e.target.value })}
                                         placeholder="0"
@@ -260,7 +259,7 @@ export default function AdminPlanos()
 
                             <div>
                                 <label className="block text-sm text-brand-gray mb-3">Funcionalidades</label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {PLAN_ALL_FEATURES.map(feature => 
                                     {
                                         const isChecked = formData.features.includes(feature);
@@ -306,8 +305,7 @@ export default function AdminPlanos()
                                 </Button>
                             </div>
                         </form>
-                    </div>
-                </div>
+                </ResponsiveModal>
             )}
         </div>
     );

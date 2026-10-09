@@ -6,6 +6,7 @@ import { Calendar, List, Clock, User, ChevronLeft, ChevronRight, Check, X, Sciss
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import ResponsiveModal from '@/components/ui/ResponsiveModal';
 
 import { formatarMoeda, formatarData, formatarDataCompleta, formatDateLocal, hojeLocal, formatarTelefone, isAppointmentDone } from '@/utils';
 import { DIAS_SEMANA_SHORT, MESES, STATUS_CONFIG } from '@/types';
@@ -237,64 +238,55 @@ export default function Agenda()
         faltas: appointments.filter(a => a.status === 'NO_SHOW').length
     };
 
+    const onCardKey = (e: React.KeyboardEvent, apt) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(apt); } };
+
     return (
         <div>
-            <div className="flex flex-col gap-4 md:flex-row md:gap-0 justify-between items-center mb-8">
+            <div className="flex items-center justify-between gap-4 mb-6 md:mb-8">
                 <h1 className="text-3xl font-bold">Agenda</h1>
-                <div className="flex gap-2">
-                    <Button onClick={() => setView('lista')} variant={view === 'lista' ? 'primary' : 'outline'}>
-                        <List size={24} />
+                <div className="flex gap-2" role="group" aria-label="Modo de visualização">
+                    <Button onClick={() => setView('lista')} variant={view === 'lista' ? 'primary' : 'outline'} aria-label="Ver em lista" aria-pressed={view === 'lista'} className="px-3! md:px-6!">
+                        <List size={22} aria-hidden="true" />
                     </Button>
-                    <Button onClick={() => setView('calendario')} variant={view === 'calendario' ? 'primary' : 'outline'}>
-                        <Calendar size={24} />
+                    <Button onClick={() => setView('calendario')} variant={view === 'calendario' ? 'primary' : 'outline'} aria-label="Ver calendário" aria-pressed={view === 'calendario'} className="px-3! md:px-6!">
+                        <Calendar size={22} aria-hidden="true" />
                     </Button>
                 </div>
             </div>
 
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-6 mb-8">
-                <div className="bg-brand-dark p-4 rounded-lg">
-                    <p className="text-sm text-brand-gray">Total</p>
-                    <p className="text-2xl font-bold text-white">{stats.total}</p>
-                </div>
-                <div className="bg-brand-dark p-4 rounded-lg">
-                    <p className="text-sm text-yellow-500">Pendentes</p>
-                    <p className="text-2xl font-bold text-yellow-500">{stats.pendentes}</p>
-                </div>
-                <div className="bg-brand-dark p-4 rounded-lg">
-                    <p className="text-sm text-blue-500">Confirmados</p>
-                    <p className="text-2xl font-bold text-blue-500">{stats.confirmados}</p>
-                </div>
-                <div className="bg-brand-dark p-4 rounded-lg">
-                    <p className="text-sm text-green-500">Concluídos</p>
-                    <p className="text-2xl font-bold text-green-500">{stats.concluidos}</p>
-                </div>
-                <div className="bg-brand-dark p-4 rounded-lg">
-                    <p className="text-sm text-red-400">Cancelados</p>
-                    <p className="text-2xl font-bold text-red-400">{stats.cancelados}</p>
-                </div>
-                <div className="bg-brand-dark p-4 rounded-lg">
-                    <p className="text-sm text-red-600">Faltas</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.faltas}</p>
-                </div>
+            <div className="grid gap-2 grid-cols-3 md:grid-cols-6 md:gap-4 mb-6 md:mb-8">
+                {[
+                    { label: 'Total', value: stats.total, cls: 'text-white', lcls: 'text-brand-gray' },
+                    { label: 'Pendentes', value: stats.pendentes, cls: 'text-yellow-500' },
+                    { label: 'Confirmados', value: stats.confirmados, cls: 'text-blue-500' },
+                    { label: 'Concluídos', value: stats.concluidos, cls: 'text-green-500' },
+                    { label: 'Cancelados', value: stats.cancelados, cls: 'text-red-400' },
+                    { label: 'Faltas', value: stats.faltas, cls: 'text-red-600' },
+                ].map(s => (
+                    <div key={s.label} className="bg-brand-dark p-3 md:p-4 rounded-lg min-w-0">
+                        <p className={`text-xs md:text-sm truncate ${s.lcls || s.cls}`}>{s.label}</p>
+                        <p className={`text-xl md:text-2xl font-bold ${s.cls}`}>{s.value}</p>
+                    </div>
+                ))}
             </div>
 
             {view === 'lista' && (
                 <>
-                    <div className="flex flex-wrap gap-4 mb-6">
-                        <div className="w-48">
-                            <Select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} variant="dark" fullWidth>
+                    <div className="grid grid-cols-2 gap-3 mb-6 sm:flex sm:flex-wrap sm:gap-4">
+                        <div className="min-w-0 sm:w-48">
+                            <Select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} variant="dark" fullWidth aria-label="Filtrar por status">
                                 <option value="">Todos os status</option>
                                 {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                                     <option key={key} value={key}>{config.label}</option>
                                 ))}
                             </Select>
                         </div>
-                        <div>
-                            <Input type="date" value={filtroData} onChange={e => setFiltroData(e.target.value)} />
+                        <div className="min-w-0">
+                            <Input type="date" value={filtroData} onChange={e => setFiltroData(e.target.value)} aria-label="Filtrar por data" fullWidth className="min-h-12 appearance-none" />
                         </div>
                         {user?.user?.role === 'BARBER' && employees.length > 0 && (
-                            <div className="w-56">
-                                <Select value={filtroBarbeiro} onChange={e => setFiltroBarbeiro(e.target.value)} variant="dark" fullWidth >
+                            <div className="col-span-2 min-w-0 sm:w-56">
+                                <Select value={filtroBarbeiro} onChange={e => setFiltroBarbeiro(e.target.value)} variant="dark" fullWidth aria-label="Filtrar por profissional">
                                     <option value="">Todos os profissionais</option>
                                     <option value={user?.user?.id}>{user?.user?.name}</option>
                                     {employees?.map(employee => (
@@ -306,16 +298,41 @@ export default function Agenda()
                             </div>
                         )}
                         {(filtroStatus || filtroData) && (
-                            <Button onClick={limparFiltros} variant="outline">
+                            <Button onClick={limparFiltros} variant="outline" className="col-span-2">
                                 Limpar Filtros
                             </Button>
                         )}
                     </div>
 
-                    {appointments && appointments.length > 0 
-                    ? 
+                    {appointments && appointments.length > 0
+                    ?
                     (
-                        <div className="bg-brand-dark rounded-lg overflow-auto">
+                        <>
+                        <ul className="md:hidden space-y-3">
+                            {appointments.map(apt =>
+                            {
+                                const statusConfig = STATUS_CONFIG[apt.status] || { label: apt.status, color: 'bg-gray-500' };
+                                return (
+                                    <li key={apt.id}>
+                                        <button type="button" onClick={() => openModal(apt)} className="w-full text-left bg-brand-dark rounded-lg border border-white/5 p-4 active:bg-white/5">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-white break-words">{apt.clientName}</p>
+                                                    <p className="text-sm text-brand-gray break-words">{apt.serviceName}{apt.barberName ? ` · ${apt.barberName}` : ''}</p>
+                                                </div>
+                                                <span className={`shrink-0 text-xs px-2 py-1 rounded ${statusConfig.color}`}>{statusConfig.label}</span>
+                                            </div>
+                                            <div className="mt-3 flex items-center justify-between text-sm">
+                                                <span className="text-white">{formatarData(apt.appointmentDate)} · {apt.startTime.slice(0, 5)}–{apt.endTime.slice(0, 5)}</span>
+                                                <span className="font-semibold text-brand-blue">{formatarMoeda(apt.price)}</span>
+                                            </div>
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+
+                        <div className="hidden md:block bg-brand-dark rounded-lg overflow-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-white/10 text-left text-sm text-brand-gray font-medium ">
@@ -329,12 +346,12 @@ export default function Agenda()
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {appointments?.map(apt => 
+                                    {appointments?.map(apt =>
                                     {
-                                        const statusConfig = STATUS_CONFIG[apt.status];
+                                        const statusConfig = STATUS_CONFIG[apt.status] || { label: apt.status, color: 'bg-gray-500' };
                                         return (
-                                            <tr key={apt.id} onClick={() => openModal(apt)}
-                                                className="text-white border-b border-white/5 hover:bg-white/5 cursor-pointer" >
+                                            <tr key={apt.id} onClick={() => openModal(apt)} onKeyDown={e => onCardKey(e, apt)} tabIndex={0}
+                                                className="text-white border-b border-white/5 hover:bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:bg-white/10" >
                                                 <td className="p-4">
                                                     <div>
                                                         <p className="text-sm font-medium">{apt.clientName}</p>
@@ -362,12 +379,13 @@ export default function Agenda()
                                 </tbody>
                             </table>
                         </div>
-                    ) 
-                    : 
+                        </>
+                    )
+                    :
                     (
                         <div className="bg-brand-dark rounded-lg p-8 text-center">
-                            <Calendar size={48} className="mx-auto text-brand-gray mb-4" />
-                            <p className="text-brand-gray">Nenhum agendamento encontrado.</p>
+                            <Calendar size={48} className="mx-auto text-brand-gray mb-4" aria-hidden="true" />
+                            <p className="text-brand-gray">{loading ? 'Carregando agendamentos...' : 'Nenhum agendamento encontrado.'}</p>
                         </div>
                     )}
                 </>
@@ -375,31 +393,32 @@ export default function Agenda()
 
             {view === 'calendario' && (
                 <div className="grid gap-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2 bg-brand-dark rounded-lg p-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <button onClick={mesAnterior} className="p-2 hover:bg-white/10 rounded cursor-pointer">
-                                <ChevronLeft size={20} className="text-white" />
+                    {/* px-1 on phones so 7 day cells reach 44px wide on a 360px screen */}
+                    <div className="lg:col-span-2 bg-brand-dark rounded-lg px-1 py-4 sm:p-6">
+                        <div className="flex justify-between items-center mb-4 px-2 sm:px-0 sm:mb-6">
+                            <button type="button" onClick={mesAnterior} aria-label="Mês anterior" className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer">
+                                <ChevronLeft size={20} className="text-white" aria-hidden="true" />
                             </button>
                             <h2 className="text-lg font-semibold text-white">
                                 {MESES[mesAtual.getMonth()]} {mesAtual.getFullYear()}
                             </h2>
-                            <button onClick={proximoMes} className="p-2 hover:bg-white/10 rounded cursor-pointer">
-                                <ChevronRight size={20} className="text-white" />
+                            <button type="button" onClick={proximoMes} aria-label="Próximo mês" className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg cursor-pointer">
+                                <ChevronRight size={20} className="text-white" aria-hidden="true" />
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-7 gap-1 mb-2">
+                        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
                             {DIAS_SEMANA_SHORT.map(dia => (
-                                <div key={dia} className="text-center text-sm text-brand-gray py-2">
+                                <div key={dia} className="text-center text-xs sm:text-sm text-brand-gray py-2">
                                     {dia}
                                 </div>
                             ))}
                         </div>
 
-                        <div className="grid grid-cols-7 gap-1">
-                            {getDiasDoMes().map((item, index) => 
+                        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+                            {getDiasDoMes().map((item, index) =>
                             {
-                                const dateStr = formatDateLocal(item.date);                          
+                                const dateStr = formatDateLocal(item.date);
                                 const isHoje = dateStr === hoje;
 
                                 const hojeDate = new Date();
@@ -414,7 +433,7 @@ export default function Agenda()
                                 const isDropTarget = dropTarget?.date === dateStr;
                                 const aptsDoDia = getAppointmentsDoData(dateStr);
 
-                                const baseBg = !item.isCurrentMonth ? 'text-brand-gray/30! bg-transparent' : 
+                                const baseBg = !item.isCurrentMonth ? 'text-brand-gray/30! bg-transparent' :
                                     isSelecionado ? 'bg-brand-purple/30 hover:bg-brand-purple/40' : 'bg-white/10 hover:bg-white/20';
 
                                 const aptsValidos = aptsDoDia.filter(apt => apt.status !== 'CANCELLED');
@@ -428,9 +447,10 @@ export default function Agenda()
                                 else if (aptsValidos.length > 0) corIndicador = 'bg-blue-500';
 
                                 return (
-                                    <button key={index} onClick={() => selecionarDia(item.date)} onDragOver={(e) => !isPast && item.isCurrentMonth && handleDragOver(e, dateStr)} 
+                                    <button key={index} type="button" onClick={() => selecionarDia(item.date)} onDragOver={(e) => !isPast && item.isCurrentMonth && handleDragOver(e, dateStr)}
                                         onDragLeave={handleDragLeave} onDrop={(e) => !isPast && item.isCurrentMonth && handleDrop(e, dateStr)}
-                                            className={`relative p-2 min-h-17.5 rounded-lg text-sm text-white transition-all ${baseBg}
+                                        aria-pressed={isSelecionado} aria-label={`${item.date.getDate()} de ${MESES[item.date.getMonth()]}${aptsValidos.length ? `, ${aptsValidos.length} agendamento(s)` : ''}`}
+                                            className={`relative min-h-12 sm:min-h-17.5 min-w-0 p-1 sm:p-2 rounded-lg text-sm text-white transition-all ${baseBg}
                                                 ${isHoje ? 'ring-2 ring-brand-purple' : ''}
                                                 ${isDropTarget && draggingAppointment ? 'ring-2 ring-green-500 bg-green-500/20' : ''}
                                                 ${isPast && item.isCurrentMonth ? 'opacity-50' : ''}`}>
@@ -438,9 +458,9 @@ export default function Agenda()
                                         <span className={isHoje ? 'font-bold' : ''}>
                                             {item.date.getDate()}
                                         </span>
-                                        
+
                                         {corIndicador && (
-                                            <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
+                                            <div className="absolute bottom-1 left-1/2 -translate-x-1/2" aria-hidden="true">
                                                 <div className={`w-1.5 h-1.5 rounded-full ${corIndicador}`} />
                                             </div>
                                         )}
@@ -450,30 +470,31 @@ export default function Agenda()
                         </div>
                     </div>
 
-                    <div className="bg-brand-dark rounded-lg p-6">
-                        <h3 className="text-white font-semibold mb-4 capitalize">
+                    <div className="bg-brand-dark rounded-lg p-4 sm:p-6">
+                        <h3 className="text-white font-semibold mb-4 first-letter:uppercase">
                             {formatarDataCompleta(dataSelecionada)}
                         </h3>
 
-                        {getAppointmentsDoData(dataSelecionada).length > 0 
-                        ? 
+                        {getAppointmentsDoData(dataSelecionada).length > 0
+                        ?
                         (
                             <div className="space-y-3">
-                                {getAppointmentsDoData(dataSelecionada).map(apt => 
+                                {getAppointmentsDoData(dataSelecionada).map(apt =>
                                 {
                                     const statusConfig = STATUS_CONFIG[apt.status] || { label: apt.status, color: 'bg-gray-500' };
                                     const isDraggable = apt.status !== 'COMPLETED' && apt.status !== 'CANCELLED';
-                                    
+
                                     return (
-                                        <div key={apt.id} onClick={() => openModal(apt)} draggable={isDraggable} onDragStart={(e) => handleDragStart(e, apt)} onDragEnd={handleDragEnd}
-                                            className={` p-3 bg-white/5 rounded-lg transition-all ${isDraggable ? 'cursor-grab active:cursor-grabbing hover:bg-white/10' 
+                                        <div key={apt.id} role="button" tabIndex={0} onClick={() => openModal(apt)} onKeyDown={e => onCardKey(e, apt)}
+                                            draggable={isDraggable} onDragStart={(e) => handleDragStart(e, apt)} onDragEnd={handleDragEnd}
+                                            className={` p-3 bg-white/5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple ${isDraggable ? 'md:cursor-grab md:active:cursor-grabbing hover:bg-white/10'
                                                 : 'cursor-pointer'} ${draggingAppointment?.id === apt.id ? 'opacity-50 scale-95' : ''} `} >
 
                                             <div className="flex items-start gap-2">
                                                 {isDraggable && (
-                                                    <GripVertical size={16} className="text-brand-gray mt-1 shrink-0" />
+                                                    <GripVertical size={16} className="hidden md:block text-brand-gray mt-1 shrink-0" aria-hidden="true" />
                                                 )}
-                                                <div className="flex-1" onClick={() => openModal(apt)}>
+                                                <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-start mb-2">
                                                         <span className="text-white font-medium text-sm">
                                                             {apt.startTime?.toString().slice(0, 5)}
@@ -482,11 +503,11 @@ export default function Agenda()
                                                             {statusConfig?.label}
                                                         </span>
                                                     </div>
-                                                    <p className="text-white text-sm">{apt.clientName}</p>
+                                                    <p className="text-white text-sm break-words">{apt.clientName}</p>
                                                     <p className="text-brand-gray text-xs">{apt.serviceName}</p>
                                                     {apt.barberName && (
                                                         <p className="text-brand-gray text-xs mt-1">
-                                                            <User size={10} className="inline mr-1" />
+                                                            <User size={10} className="inline mr-1" aria-hidden="true" />
                                                             {apt.barberName}
                                                         </p>
                                                     )}
@@ -496,8 +517,8 @@ export default function Agenda()
                                     );
                                 })}
                             </div>
-                        ) 
-                        : 
+                        )
+                        :
                         (
                             <p className="text-brand-gray text-sm text-center py-8">
                                 Nenhum agendamento neste dia
@@ -508,82 +529,23 @@ export default function Agenda()
             )}
 
             {modalAberto && appointmentSelecionado && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={closeModal}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-start mb-6">
-                            <h2 className="text-white text-xl font-bold">Detalhes do Agendamento</h2>
-                            <span className={`text-xs px-2 py-1 rounded ${STATUS_CONFIG[appointmentSelecionado.status].color}`}>
-                                {STATUS_CONFIG[appointmentSelecionado.status].label}
-                            </span>
-                        </div>
-
-                        <div className="space-y-4 mb-6">
-                            <div className="flex items-center gap-3">
-                                <User size={20} className="text-brand-gray" />
-                                <div>
-                                    <p className="text-white font-medium">{appointmentSelecionado.clientName}</p>
-                                    <p className="text-brand-gray text-sm">{appointmentSelecionado.clientEmail}</p>
-                                    <p className="text-brand-gray text-sm">{formatarTelefone(appointmentSelecionado.clientPhone)}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Calendar size={20} className="text-brand-gray" />
-                                <p className="text-white">{formatarData(appointmentSelecionado.appointmentDate)}</p>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Clock size={20} className="text-brand-gray" />
-                                <p className="text-white">
-                                    {appointmentSelecionado.startTime.slice(0, 5)} - {appointmentSelecionado.endTime.slice(0, 5)}
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Scissors size={20} className="text-brand-gray" />
-                                <p className="text-white">{appointmentSelecionado.barberName}</p>
-                            </div>
-
-                            <div className="bg-white/5 rounded-lg p-4">
-                                <p className="text-white font-medium">{appointmentSelecionado.serviceName}</p>
-                                <p className="text-brand-blue font-bold">{formatarMoeda(appointmentSelecionado.price)}</p>
-                            </div>
-
-                            {appointmentSelecionado.notes && (
-                                <div className="bg-white/5 rounded-lg p-4">
-                                    <p className="text-brand-gray text-sm mb-1">Observações</p>
-                                    <p className="text-white text-sm italic">"{appointmentSelecionado.notes}"</p>
-                                </div>
-                            )}
-
-                            {appointmentSelecionado.cancelReason && (
-                                <div className="bg-red-500/10 rounded-lg p-4">
-                                    <p className="text-red-400 text-sm mb-1">Motivo do cancelamento</p>
-                                    <p className="text-white text-sm">{appointmentSelecionado.cancelReason}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
+                <ResponsiveModal title="Detalhes do Agendamento" onClose={closeModal}
+                    footer={
+                        <div className="flex w-full flex-col gap-2">
                             {(appointmentSelecionado.status === 'PENDING' || appointmentSelecionado.status === 'CONFIRMED') && (
-                                <Button onClick={() => openModalReagendar(appointmentSelecionado)} variant="secondary" fullWidth
-                                            className="flex items-center justify-center gap-2" >
-                                    <Move size={16} /> 
-                                    Reagendar
+                                <Button onClick={() => openModalReagendar(appointmentSelecionado)} variant="secondary" fullWidth>
+                                    <Move size={16} aria-hidden="true" /> Reagendar
                                 </Button>
                             )}
 
                             {appointmentSelecionado.status === 'PENDING' && (
                                 <div className="flex gap-2">
                                     <Button onClick={() => handleChangeStatus(appointmentSelecionado.id, 'CANCELLED')} variant="secondary" fullWidth disabled={loading}
-                                            className="flex items-center justify-center gap-2 text-black bg-red-400!">
-                                        <X size={16} />
-                                        Cancelar
+                                            className="text-black bg-red-400!">
+                                        <X size={16} aria-hidden="true" /> Cancelar
                                     </Button>
-                                    <Button onClick={() => handleChangeStatus(appointmentSelecionado.id, 'CONFIRMED')} fullWidth disabled={loading} 
-                                            className="flex items-center justify-center gap-2">
-                                        <Check size={16} />
-                                        Confirmar
+                                    <Button onClick={() => handleChangeStatus(appointmentSelecionado.id, 'CONFIRMED')} fullWidth disabled={loading}>
+                                        <Check size={16} aria-hidden="true" /> Confirmar
                                     </Button>
                                 </div>
                             )}
@@ -592,102 +554,146 @@ export default function Agenda()
                                 <>
                                     <div className="flex gap-2">
                                         <Button onClick={() => handleChangeStatus(appointmentSelecionado.id, 'NO_SHOW')} variant="secondary" fullWidth disabled={loading}
-                                                className="flex items-center justify-center gap-2 text-black bg-orange-400!">
+                                                className="text-black bg-orange-400!">
                                             Não Compareceu
                                         </Button>
                                         {isAppointmentDone(appointmentSelecionado) && (
-                                            <Button onClick={() => handleChangeStatus(appointmentSelecionado.id, 'COMPLETED')} fullWidth disabled={loading}
-                                                    className="flex items-center justify-center gap-2">
-                                                <Check size={16} />
-                                                Concluir
+                                            <Button onClick={() => handleChangeStatus(appointmentSelecionado.id, 'COMPLETED')} fullWidth disabled={loading}>
+                                                <Check size={16} aria-hidden="true" /> Concluir
                                             </Button>
-                                        )}                      
+                                        )}
                                     </div>
                                     <Button onClick={() => handleChangeStatus(appointmentSelecionado.id, 'CANCELLED')} variant="secondary" fullWidth disabled={loading}
-                                            className="flex items-center justify-center gap-2 text-black bg-red-400!">
-                                        <X size={16} />
-                                        Cancelar Agendamento
+                                            className="text-black bg-red-400!">
+                                        <X size={16} aria-hidden="true" /> Cancelar Agendamento
                                     </Button>
                                 </>
                             )}
 
-                            <Button onClick={closeModal} variant="outline" fullWidth>
-                                Fechar
-                            </Button>
+                            {!['PENDING', 'CONFIRMED'].includes(appointmentSelecionado.status) && (
+                                <Button onClick={closeModal} variant="outline" fullWidth>Fechar</Button>
+                            )}
+                        </div>
+                    }>
+                    <span className={`inline-block text-xs px-2 py-1 rounded ${(STATUS_CONFIG[appointmentSelecionado.status] || {}).color}`}>
+                        {(STATUS_CONFIG[appointmentSelecionado.status] || {}).label || appointmentSelecionado.status}
+                    </span>
+
+                    <div className="flex items-start gap-3">
+                        <User size={20} className="text-brand-gray mt-0.5 shrink-0" aria-hidden="true" />
+                        <div className="min-w-0">
+                            <p className="text-white font-medium break-words">{appointmentSelecionado.clientName}</p>
+                            {appointmentSelecionado.clientEmail && (
+                                <a href={`mailto:${appointmentSelecionado.clientEmail}`} className="block py-1 text-brand-gray text-sm break-all underline-offset-2 hover:underline">{appointmentSelecionado.clientEmail}</a>
+                            )}
+                            {appointmentSelecionado.clientPhone && (
+                                <a href={`tel:${appointmentSelecionado.clientPhone}`} className="inline-flex min-h-11 items-center text-brand-blue text-sm">{formatarTelefone(appointmentSelecionado.clientPhone)}</a>
+                            )}
                         </div>
                     </div>
-                </div>
+
+                    <div className="flex items-center gap-3">
+                        <Calendar size={20} className="text-brand-gray shrink-0" aria-hidden="true" />
+                        <p className="text-white">{formatarData(appointmentSelecionado.appointmentDate)}</p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <Clock size={20} className="text-brand-gray shrink-0" aria-hidden="true" />
+                        <p className="text-white">
+                            {appointmentSelecionado.startTime.slice(0, 5)} - {appointmentSelecionado.endTime.slice(0, 5)}
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <Scissors size={20} className="text-brand-gray shrink-0" aria-hidden="true" />
+                        <p className="text-white">{appointmentSelecionado.barberName}</p>
+                    </div>
+
+                    <div className="bg-white/5 rounded-lg p-4">
+                        <p className="text-white font-medium">{appointmentSelecionado.serviceName}</p>
+                        <p className="text-brand-blue font-bold">{formatarMoeda(appointmentSelecionado.price)}</p>
+                    </div>
+
+                    {appointmentSelecionado.notes && (
+                        <div className="bg-white/5 rounded-lg p-4">
+                            <p className="text-brand-gray text-sm mb-1">Observações</p>
+                            <p className="text-white text-sm italic break-words">"{appointmentSelecionado.notes}"</p>
+                        </div>
+                    )}
+
+                    {appointmentSelecionado.cancelReason && (
+                        <div className="bg-red-500/10 rounded-lg p-4">
+                            <p className="text-red-400 text-sm mb-1">Motivo do cancelamento</p>
+                            <p className="text-white text-sm break-words">{appointmentSelecionado.cancelReason}</p>
+                        </div>
+                    )}
+                </ResponsiveModal>
             )}
 
             {modalReagendar && appointmentSelecionado && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={closeModalReagendar}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-white text-xl font-bold mb-2">
-                            Reagendar
-                        </h2>
-                        <p className="text-brand-gray text-sm mb-6">
-                            {appointmentSelecionado.clientName} - {appointmentSelecionado.serviceName}
-                        </p>
-
-                        <div className="mb-6">
-                            <label className="block text-sm text-brand-gray mb-2">Nova Data</label>
-                            <Input type="date" value={reagendarData} onChange={e => { setReagendarData(e.target.value); setReagendarSlotSelecionado(null); }}
-                                min={hoje} fullWidth />
-                        </div>
-
-                        <div className="mb-6">
-                            <label className="block text-sm text-brand-gray mb-2">Novo Horário</label>
-                            
-                            {loadingSlots 
-                            ? 
-                            (
-                                <div className="text-center py-8 text-brand-gray">
-                                    <div className="animate-spin w-6 h-6 border-2 border-brand-purple border-t-transparent rounded-full mx-auto mb-2"></div>
-                                    Carregando horários...
-                                </div>
-                            ) 
-                            : 
-                            reagendarSlots.length > 0 
-                            ? 
-                            (
-                                <div className="grid grid-cols-4 gap-2">
-                                    {reagendarSlots.map((slot, index) => (
-                                        <button key={index} onClick={() => slot.available && setReagendarSlotSelecionado(slot.startTime)} disabled={!slot.available}
-                                            className={`p-2 rounded text-sm font-medium transition-colors ${slot.isLunch 
-                                                ? 'bg-orange-500/10 text-orange-400/50 cursor-not-allowed' : !slot.available 
-                                                        ? 'bg-white/5 text-brand-gray/50 cursor-not-allowed line-through' : reagendarSlotSelecionado === slot.startTime
-                                                            ? 'bg-brand-purple text-white' : 'bg-white/10 text-white hover:bg-brand-purple/30'}`}>
-                                            {slot.startTime.slice(0, 5)}
-                                        </button>
-                                    ))}
-                                </div>
-                            ) 
-                            : 
-                            reagendarData 
-                            ? 
-                            (
-                                <p className="text-center py-8 text-brand-gray">
-                                    Nenhum horário disponível nesta data
-                                </p>
-                            ) 
-                            : 
-                            (
-                                <p className="text-center py-8 text-brand-gray">
-                                    Selecione uma data
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="flex gap-3">
-                            <Button onClick={closeModalReagendar} variant="outline" fullWidth>
-                                Cancelar
-                            </Button>
-                            <Button onClick={handleReagendar} disabled={!reagendarSlotSelecionado || loading} fullWidth >
+                <ResponsiveModal title="Reagendar" onClose={closeModalReagendar}
+                    footer={
+                        <>
+                            <Button onClick={closeModalReagendar} variant="outline" fullWidth>Cancelar</Button>
+                            <Button onClick={handleReagendar} disabled={!reagendarSlotSelecionado || loading} fullWidth>
                                 {loading ? 'Reagendando...' : 'Confirmar'}
                             </Button>
-                        </div>
+                        </>
+                    }>
+                    <p className="text-brand-gray text-sm break-words">
+                        {appointmentSelecionado.clientName} - {appointmentSelecionado.serviceName}
+                    </p>
+
+                    <div>
+                        <label htmlFor="reagendar-data" className="block text-sm text-brand-gray mb-2">Nova Data</label>
+                        <Input id="reagendar-data" type="date" value={reagendarData} onChange={e => { setReagendarData(e.target.value); setReagendarSlotSelecionado(null); }}
+                            min={hoje} fullWidth className="min-h-12 appearance-none" />
                     </div>
-                </div>
+
+                    <div>
+                        <p className="block text-sm text-brand-gray mb-2">Novo Horário</p>
+
+                        {loadingSlots
+                        ?
+                        (
+                            <div className="text-center py-8 text-brand-gray" role="status">
+                                <div className="animate-spin w-6 h-6 border-2 border-brand-purple border-t-transparent rounded-full mx-auto mb-2" aria-hidden="true"></div>
+                                Carregando horários...
+                            </div>
+                        )
+                        :
+                        reagendarSlots.length > 0
+                        ?
+                        (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                {reagendarSlots.map((slot, index) => (
+                                    <button key={index} type="button" onClick={() => slot.available && setReagendarSlotSelecionado(slot.startTime)} disabled={!slot.available}
+                                        aria-pressed={reagendarSlotSelecionado === slot.startTime}
+                                        className={`min-h-11 rounded-lg text-sm font-medium transition-colors ${slot.isLunch
+                                            ? 'bg-orange-500/10 text-orange-400/50 cursor-not-allowed' : !slot.available
+                                                    ? 'bg-white/5 text-brand-gray/50 cursor-not-allowed line-through' : reagendarSlotSelecionado === slot.startTime
+                                                        ? 'bg-brand-purple text-white' : 'bg-white/10 text-white hover:bg-brand-purple/30'}`}>
+                                        {slot.startTime.slice(0, 5)}
+                                    </button>
+                                ))}
+                            </div>
+                        )
+                        :
+                        reagendarData
+                        ?
+                        (
+                            <p className="text-center py-8 text-brand-gray">
+                                Nenhum horário disponível nesta data
+                            </p>
+                        )
+                        :
+                        (
+                            <p className="text-center py-8 text-brand-gray">
+                                Selecione uma data
+                            </p>
+                        )}
+                    </div>
+                </ResponsiveModal>
             )}
         </div>
     );

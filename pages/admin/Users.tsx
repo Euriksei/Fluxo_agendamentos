@@ -5,6 +5,7 @@ import { useApi } from '@/hooks/useApi';
 import { Building2, Search, Edit, Key, ChevronRight, User, Users as UsersIcon, Crown, Check } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
+import ResponsiveModal from '@/components/ui/ResponsiveModal';
 import Input from '@/components/ui/Input';
 
 const STATUS_CONFIG = 
@@ -136,23 +137,23 @@ export default function Users()
 
     return (
         <div>
-            <div className="flex flex-col gap-4 md:flex-row md:gap-0 justify-between items-center mb-8">
+            <div className="flex flex-col gap-4 sm:flex-row justify-between sm:items-center mb-8">
                 <h1 className="text-3xl font-bold">Usuários</h1>
-                <div className="relative">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gray" />
+                <div className="relative w-full sm:w-auto">
+                    <Search size={18} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gray" />
                     <Input
                         type="text"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Buscar..."
-                        className="pl-10 w-64"
+                        className="pl-10 w-full sm:w-64" aria-label="Buscar barbearias" inputMode="search" enterKeyHint="search"
                     />
                 </div>
             </div>
 
             {/* Lista */}
-            <div className="bg-brand-dark rounded-xl overflow-auto">
-                <table className="w-full">
+            <div className="md:bg-brand-dark rounded-xl md:overflow-auto">
+                <table className="w-full table-cards">
                     <thead>
                         <tr className="border-b border-white/10">
                             <th className="text-left text-sm text-brand-gray font-medium p-4">Loja</th>
@@ -168,47 +169,47 @@ export default function Users()
                             const statusConfig = STATUS_CONFIG[shop.subscriptionStatus] || STATUS_CONFIG.PENDING;
                             return (
                                 <tr key={shop.id} className="border-b border-white/5 hover:bg-white/5">
-                                    <td className="p-4">
+                                    <td data-label="Loja" className="p-4">
                                         <div className="flex flex-col">
                                             <p className="text-white font-medium">{shop.shop}</p>
                                             <p className="text-brand-gray text-sm">{shop.name}</p>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-brand-gray text-sm">{shop.email}</td>
-                                    <td className="p-4">
+                                    <td data-label="Email" className="p-4 text-brand-gray text-sm">{shop.email}</td>
+                                    <td data-label="Plano" className="p-4">
                                         <span className="text-white text-sm">{shop.planName || 'Grátis'}</span>
                                     </td>
-                                    <td className="p-4">
+                                    <td data-label="Status" className="p-4">
                                         <span className={`text-xs px-2 py-1 rounded ${statusConfig.color}`}>
                                             {statusConfig.label}
                                         </span>
                                     </td>
-                                    <td className="p-4">
+                                    <td data-label="Funcionários" className="p-4">
                                         <span className="text-white text-sm flex items-center gap-1">
                                             <UsersIcon size={14} className="text-brand-gray" />
                                             {shop.employeeCount || 0}
                                         </span>
                                     </td>
-                                    <td className="p-4">
+                                    <td data-label="" className="p-4">
                                         <div className="flex items-center gap-2">
                                             <button 
                                                 onClick={() => openModal(shop, 'details')}
-                                                className="p-2 hover:bg-white/10 rounded text-brand-gray hover:text-white"
-                                                title="Ver detalhes"
+                                                className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg text-brand-gray hover:text-white"
+                                                title="Ver detalhes" aria-label="Ver detalhes"
                                             >
                                                 <ChevronRight size={18} />
                                             </button>
                                             <button 
                                                 onClick={() => openModal(shop, 'edit')}
-                                                className="p-2 hover:bg-white/10 rounded text-brand-blue hover:text-blue-400"
-                                                title="Editar"
+                                                className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg text-brand-blue hover:text-blue-400"
+                                                title="Editar" aria-label="Editar"
                                             >
                                                 <Edit size={18} />
                                             </button>
                                             <button 
                                                 onClick={() => openModal(shop, 'password')}
-                                                className="p-2 hover:bg-white/10 rounded text-yellow-500 hover:text-yellow-400"
-                                                title="Resetar senha"
+                                                className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg text-yellow-500 hover:text-yellow-400"
+                                                title="Resetar senha" aria-label="Resetar senha"
                                             >
                                                 <Key size={18} />
                                             </button>
@@ -229,13 +230,11 @@ export default function Users()
 
             {/* Modal */}
             {modalAberto && selectedShop && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={closeModal}>
-                    <div className="bg-brand-dark border border-white/10 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <ResponsiveModal onClose={closeModal} title={modalTipo === 'edit' ? 'Editar Barbearia' : modalTipo === 'password' ? 'Resetar Senha' : 'Detalhes da Barbearia'}>
                         
                         {/* Modal: Editar */}
                         {modalTipo === 'edit' && (
-                            <form onSubmit={handleSaveEdit} className="p-6">
-                                <h2 className="text-xl font-bold text-white mb-6">Editar Barbearia</h2>
+                            <form onSubmit={handleSaveEdit}>
 
                                 <div className="space-y-4">
                                     <div>
@@ -260,6 +259,8 @@ export default function Users()
                                         <label className="block text-sm text-brand-gray mb-1">Email</label>
                                         <Input
                                             type="email"
+                                            inputMode="email"
+                                            autoCapitalize="none"
                                             value={formData.email}
                                             onChange={e => setFormData({ ...formData, email: e.target.value })}
                                             fullWidth
@@ -288,8 +289,7 @@ export default function Users()
 
                         {/* Modal: Resetar Senha */}
                         {modalTipo === 'password' && (
-                            <form onSubmit={handleResetPassword} className="p-6">
-                                <h2 className="text-xl font-bold text-white mb-2">Resetar Senha</h2>
+                            <form onSubmit={handleResetPassword}>
                                 <p className="text-brand-gray text-sm mb-6">{selectedShop.name} - {selectedShop.email}</p>
 
                                 <div className="space-y-4">
@@ -297,6 +297,7 @@ export default function Users()
                                         <label className="block text-sm text-brand-gray mb-1">Nova Senha</label>
                                         <Input
                                             type="password"
+                                            autoComplete="new-password"
                                             value={newPassword}
                                             onChange={e => setNewPassword(e.target.value)}
                                             placeholder="Mínimo 8 caracteres"
@@ -327,8 +328,7 @@ export default function Users()
 
                         {/* Modal: Detalhes */}
                         {modalTipo === 'details' && (
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold text-white mb-6">Detalhes da Barbearia</h2>
+                            <div>
 
                                 <div className="space-y-6">
                                     {/* Info Principal */}
@@ -345,7 +345,7 @@ export default function Users()
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div>
                                                 <p className="text-brand-gray">Email</p>
-                                                <p className="text-white">{selectedShop.email}</p>
+                                                <p className="text-white break-all">{selectedShop.email}</p>
                                             </div>
                                             <div>
                                                 <p className="text-brand-gray">Cadastro</p>
@@ -400,7 +400,7 @@ export default function Users()
                                                             <User size={14} className="text-brand-gray" />
                                                             <span className="text-white text-sm">{emp.name}</span>
                                                         </div>
-                                                        <span className="text-brand-gray text-xs">{emp.email}</span>
+                                                        <span className="text-brand-gray text-xs break-all text-right">{emp.email}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -413,8 +413,7 @@ export default function Users()
                                 </div>
                             </div>
                         )}
-                    </div>
-                </div>
+                </ResponsiveModal>
             )}
         </div>
     );

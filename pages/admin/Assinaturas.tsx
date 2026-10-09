@@ -5,6 +5,7 @@ import { useApi } from '@/hooks/useApi';
 import { Search, Edit, Building2 } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
+import ResponsiveModal from '@/components/ui/ResponsiveModal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 
@@ -114,8 +115,8 @@ export default function AdminAssinaturas()
             </div>
 
             {/* Tabela */}
-            <div className="bg-brand-dark rounded-xl overflow-hidden">
-                <table className="w-full">
+            <div className="md:bg-brand-dark rounded-xl md:overflow-hidden">
+                <table className="w-full table-cards">
                     <thead>
                         <tr className="border-b border-white/10">
                             <th className="text-left text-sm text-brand-gray font-medium p-4">Loja</th>
@@ -132,7 +133,7 @@ export default function AdminAssinaturas()
                             const StatusIcon = statusConfig.icon;
                             return (
                                 <tr key={sub.id} className="border-b border-white/5 hover:bg-white/5">
-                                    <td className="p-4">
+                                    <td data-label="Loja" className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div>
                                                 <p className="text-white font-medium">{sub.shop}</p>
@@ -140,25 +141,25 @@ export default function AdminAssinaturas()
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4">
+                                    <td data-label="Plano" className="p-4">
                                         <span className="text-white">{sub.planName}</span>
                                     </td>
-                                    <td className="p-4">
+                                    <td data-label="Status" className="p-4">
                                         <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded ${statusConfig.color}`}>
                                             <StatusIcon size={12} />
                                             {statusConfig.label}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-brand-gray text-sm">
+                                    <td data-label="Próx. Pagamento" className="p-4 text-brand-gray text-sm">
                                         {formatarData(sub.nextPaymentAt)}
                                     </td>
-                                    <td className="p-4 text-white font-medium">
+                                    <td data-label="Valor" className="p-4 text-white font-medium">
                                         {formatarMoeda(sub.planPrice)}
                                     </td>
-                                    <td className="p-4">
+                                    <td data-label="" className="p-4">
                                         <button 
-                                            onClick={() => openModal(sub)}
-                                            className="p-2 hover:bg-white/10 rounded text-brand-blue hover:text-blue-400"
+                                            onClick={() => openModal(sub)} aria-label={`Editar assinatura de ${sub.shop}`}
+                                            className="inline-flex size-11 items-center justify-center hover:bg-white/10 rounded-lg text-brand-blue hover:text-blue-400"
                                         >
                                             <Edit size={18} />
                                         </button>
@@ -178,10 +179,8 @@ export default function AdminAssinaturas()
 
             {/* Modal de Edição */}
             {modalAberto && selectedSub && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={closeModal}>
-                    <div className="bg-brand-dark border border-white/10 rounded-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-xl font-bold text-white mb-2">Editar Assinatura</h2>
-                        <p className="text-brand-gray text-sm mb-6">{selectedSub.shop} - {selectedSub.ownerName}</p>
+                <ResponsiveModal title="Editar Assinatura" onClose={closeModal}>
+                        <p className="text-brand-gray text-sm">{selectedSub.shop} - {selectedSub.ownerName}</p>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
@@ -233,8 +232,7 @@ export default function AdminAssinaturas()
                                 </Button>
                             </div>
                         </form>
-                    </div>
-                </div>
+                </ResponsiveModal>
             )}
         </div>
     );

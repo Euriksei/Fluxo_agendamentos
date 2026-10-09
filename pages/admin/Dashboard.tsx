@@ -194,19 +194,19 @@ export default function AdminDashboard()
             </div>
 
             {overdueSubscriptions.length > 0 && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 sm:p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <AlertTriangle size={20} className="text-red-500" />
                             Assinaturas Inadimplentes
                         </h3>
-                        <Link to="/admin/assinaturas?status=OVERDUE" className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1">
+                        <Link to="/admin/assinaturas?status=OVERDUE" className="-my-2 inline-flex min-h-11 items-center gap-1 text-red-400 hover:text-red-300 text-sm">
                             Ver todos <ChevronRight size={16} />
                         </Link>
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full table-cards">
                             <thead>
                                 <tr className="text-left border-b border-red-500/20">
                                     <th className="text-brand-gray text-sm font-medium pb-3">Barbearia</th>
@@ -218,15 +218,15 @@ export default function AdminDashboard()
                             <tbody>
                                 {overdueSubscriptions.map(sub => (
                                     <tr key={sub.id} className="border-b border-red-500/10">
-                                        <td className="py-3">
+                                        <td data-label="Barbearia" className="py-3">
                                             <div>
                                                 <p className="text-white text-sm">{sub.shop || sub.ownerName}</p>
                                                 <p className="text-brand-gray text-xs">{sub.email}</p>
                                             </div>
                                         </td>
-                                        <td className="py-3 text-white text-sm">{sub.planName}</td>
-                                        <td className="py-3 text-red-400 text-sm">{formatarData(sub.nextPaymentAt)}</td>
-                                        <td className="py-3 text-white text-sm font-medium">{formatarMoeda(sub.planPrice)}</td>
+                                        <td data-label="Plano" className="py-3 text-white text-sm">{sub.planName}</td>
+                                        <td data-label="Vencimento" className="py-3 text-red-400 text-sm">{formatarData(sub.nextPaymentAt)}</td>
+                                        <td data-label="Valor" className="py-3 text-white text-sm font-medium">{formatarMoeda(sub.planPrice)}</td>
                                     </tr>
                                 ))}
                             </tbody>

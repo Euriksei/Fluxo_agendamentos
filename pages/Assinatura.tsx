@@ -5,6 +5,7 @@ import { CreditCard, Calendar, Clock, Check, X, AlertTriangle, Crown, Zap, Users
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import ResponsiveModal from '@/components/ui/ResponsiveModal';
 
 import { formatarMoeda, formatarData } from '@/utils';
 import { SUBSCRIPTION_STATUS_CONFIG, PLAN_FEATURE_LABELS } from '@/types';
@@ -292,22 +293,22 @@ export default function Assinatura()
 
     return (
         <div>
-            <div className="flex flex-col gap-4 md:flex-row md:gap-0 justify-between items-center mb-8">
+            <div className="flex gap-4 justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Assinatura</h1>
-                <Button onClick={syncSubscription} variant="outline" disabled={loading}>
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                <Button onClick={syncSubscription} variant="outline" disabled={loading} aria-label="Atualizar status da assinatura" title="Atualizar status" className="px-4!">
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
                 </Button>
             </div>
 
             {sucesso && (
-                <div className="bg-green-500/20 border border-green-500/50 text-green-400 p-4 rounded-lg mb-6 flex items-center gap-2">
+                <div role="status" className="bg-green-500/20 border border-green-500/50 text-green-400 p-4 rounded-lg mb-6 flex items-center gap-2">
                     <Check size={20} />
                     {sucesso}
                 </div>
             )}
 
             {/* Card Principal da Assinatura */}
-            <div className="bg-brand-dark rounded-lg p-6 mb-6">
+            <div className="bg-brand-dark rounded-lg p-4 sm:p-6 mb-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${statusConfig.color}`}>
@@ -324,7 +325,7 @@ export default function Assinatura()
                     </div>
 
                     {subscription?.plan?.price > 0 && (
-                        <div className="text-right">
+                        <div className="md:text-right">
                             <p className="text-brand-gray text-sm">Valor mensal</p>
                             <p className="text-brand-blue text-2xl font-bold">
                                 {formatarMoeda(subscription.plan.price)}
@@ -336,7 +337,7 @@ export default function Assinatura()
                 {/* Informações do Trial */}
                 {subscription?.status === 'TRIAL' && (
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <Clock size={20} className="text-blue-400" />
                             <div className="flex-1">
                                 <p className="text-white font-medium">Período de Teste</p>
@@ -347,7 +348,7 @@ export default function Assinatura()
                                     }
                                 </p>
                             </div>
-                            <Button onClick={() => { limparFormularios(); setModalPagamento(true); }} size="sm">
+                            <Button onClick={() => { limparFormularios(); setModalPagamento(true); }} size="sm" className="w-full sm:w-auto">
                                 Assinar Agora
                             </Button>
                         </div>
@@ -357,7 +358,7 @@ export default function Assinatura()
                 {/* Aviso de Pagamento Pendente */}
                 {subscription?.status === 'PENDING' && (
                     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <AlertTriangle size={20} className="text-yellow-400" />
                             <div className="flex-1">
                                 <p className="text-white font-medium">Pagamento Pendente</p>
@@ -365,7 +366,7 @@ export default function Assinatura()
                                     Realize o pagamento para ativar sua assinatura
                                 </p>
                             </div>
-                            <Button onClick={() => fetchPayments()} size="sm" variant="secondary">
+                            <Button onClick={() => fetchPayments()} size="sm" variant="secondary" className="w-full sm:w-auto">
                                 Ver Cobranças
                             </Button>
                         </div>
@@ -430,7 +431,7 @@ export default function Assinatura()
                 )}
 
                 {/* Ações */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     {(!subscription || subscription.status === 'NONE' || subscription.status === 'CANCELLED') && (
                         <Button onClick={openModalNovaAssinatura} className="flex items-center justify-center gap-2" >
                             <Crown size={16}/> Assinar Plano
@@ -462,13 +463,13 @@ export default function Assinatura()
 
             {/* Histórico de Pagamentos */}
             {payments && payments.length > 0 && (
-                <div className="bg-brand-dark rounded-lg p-6">
+                <div className="bg-brand-dark rounded-lg p-4 sm:p-6">
                     <h3 className="text-white text-lg font-semibold mb-4">Histórico de Pagamentos</h3>
                     
                     <div className="space-y-3">
                         {payments.map(payment => (
-                            <div key={payment.id} onClick={() => handleVerPagamento(payment)}
-                                className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors">
+                            <button type="button" key={payment.id} onClick={() => handleVerPagamento(payment)}
+                                className="w-full text-left flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center
                                         ${payment.status === 'RECEIVED' || payment.status === 'CONFIRMED' ? 'bg-green-500/20 text-green-400' :
@@ -484,8 +485,8 @@ export default function Assinatura()
                                         </p>
                                     </div>
                                 </div>
-                                <ChevronRight size={20} className="text-brand-gray" />
-                            </div>
+                                <ChevronRight size={20} className="text-brand-gray" aria-hidden="true" />
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -493,593 +494,380 @@ export default function Assinatura()
 
             {/* Modal Nova Assinatura */}
             {modalNovaAssinatura && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={closeModalNovaAssinatura}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                        
-                        {/* Etapa 1: Escolher Plano */}
-                        {etapa === 1 && (
+                <ResponsiveModal title={etapa === 1 ? 'Escolha seu Plano' : etapa === 2 ? 'Forma de Pagamento' : billingType === 'CREDIT_CARD' ? 'Dados do Cartão' : 'Dados para Cobrança'}
+                    onClose={closeModalNovaAssinatura}
+                    footer={
+                        etapa === 1 ? <Button onClick={closeModalNovaAssinatura} variant="outline" fullWidth>Cancelar</Button>
+                        : etapa === 2 ? (
                             <>
-                                <h2 className="text-white text-xl font-bold mb-6">Escolha seu Plano</h2>
-                                
-                                <div className="space-y-4 mb-6">
-                                    {plans.filter(p => p.slug !== 'free').map(plan => (
-                                        <div key={plan.id} onClick={() => handleSelecionarPlano(plan)}
-                                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all
-                                                ${planoSelecionado?.id === plan.id 
-                                                    ? 'border-brand-purple bg-brand-purple/10' 
-                                                    : 'border-white/10 hover:border-white/30'}`}>
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <h4 className="text-white font-semibold">{plan.name}</h4>
-                                                    <p className="text-brand-gray text-sm">
-                                                        {plan.maxEmployees === 999 ? 'Ilimitado' : `Até ${plan.maxEmployees} funcionários`}
-                                                    </p>
-                                                </div>
-                                                <p className="text-brand-blue font-bold">{formatarMoeda(plan.price)}/mês</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <Button onClick={closeModalNovaAssinatura} variant="outline" fullWidth>
-                                    Cancelar
-                                </Button>
+                                <Button onClick={() => setEtapa(1)} variant="outline" fullWidth>Voltar</Button>
+                                {usarTrial
+                                    ? <Button onClick={handleCriarAssinatura} disabled={actionLoading} fullWidth>{actionLoading ? 'Processando...' : 'Iniciar Teste'}</Button>
+                                    : <Button onClick={() => setEtapa(3)} fullWidth>Continuar</Button>}
                             </>
-                        )}
-
-                        {/* Etapa 2: Forma de Pagamento */}
-                        {etapa === 2 && (
+                        ) : (
                             <>
-                                <div className="flex items-center gap-4 mb-6">
-                                    <button onClick={() => setEtapa(1)} className="text-brand-gray hover:text-white">
-                                        ← Voltar
-                                    </button>
-                                    <h2 className="text-white text-xl font-bold">Forma de Pagamento</h2>
-                                </div>
-
-                                <div className="bg-white/5 rounded-lg p-4 mb-6">
-                                    <p className="text-brand-gray text-sm">Plano selecionado:</p>
-                                    <p className="text-white font-semibold">{planoSelecionado?.name} - {formatarMoeda(planoSelecionado?.price)}/mês</p>
-                                </div>
-
-                                {/* Opção Trial */}
-                                {!subscription || subscription.status === 'NONE' ? (
-                                    <label className="flex items-center gap-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg mb-6 cursor-pointer">
-                                        <input type="checkbox" checked={usarTrial} onChange={e => setUsarTrial(e.target.checked)}
-                                            className="w-5 h-5 rounded border-white/20 bg-brand-darker text-brand-purple focus:ring-brand-purple" />
-                                        <div>
-                                            <span className="text-white font-medium">Começar com 7 dias grátis</span>
-                                            <p className="text-blue-400 text-sm">Teste todas as funcionalidades sem compromisso</p>
-                                        </div>
-                                    </label>
-                                ) : null}
-
-                                {!usarTrial && (
-                                    <>
-                                        <div className="grid grid-cols-3 gap-3 mb-6">
-                                            {Object.entries(BILLING_TYPES).map(([key, config]) => {
-                                                const Icon = config.icon;
-                                                return (
-                                                    <button key={key} onClick={() => setBillingType(key)}
-                                                        className={`p-4 rounded-lg border-2 text-center transition-all
-                                                            ${billingType === key 
-                                                                ? 'border-brand-purple bg-brand-purple/10' 
-                                                                : 'border-white/10 hover:border-white/30'}`}>
-                                                        <Icon size={24} className={`mx-auto mb-2 ${billingType === key ? 'text-brand-purple' : 'text-brand-gray'}`} />
-                                                        <span className={`text-sm ${billingType === key ? 'text-white' : 'text-brand-gray'}`}>
-                                                            {config.label}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-
-                                        <Button onClick={() => setEtapa(3)} fullWidth>
-                                            Continuar
-                                        </Button>
-                                    </>
-                                )}
-
-                                {usarTrial && (
-                                    <Button onClick={handleCriarAssinatura} disabled={actionLoading} fullWidth>
-                                        {actionLoading ? 'Processando...' : 'Iniciar Período de Teste'}
-                                    </Button>
-                                )}
-
-                                {erro && (
-                                    <p className="text-red-400 text-sm mt-4 text-center">{erro}</p>
-                                )}
+                                <Button onClick={() => setEtapa(2)} variant="outline" fullWidth>Voltar</Button>
+                                <Button onClick={handleCriarAssinatura} disabled={actionLoading} fullWidth>{actionLoading ? 'Processando...' : 'Finalizar'}</Button>
                             </>
-                        )}
+                        )
+                    }>
 
-                        {/* Etapa 3: Dados de Pagamento */}
-                        {etapa === 3 && (
-                            <>
-                                <div className="flex items-center gap-4 mb-6">
-                                    <button onClick={() => setEtapa(2)} className="text-brand-gray hover:text-white">
-                                        ← Voltar
-                                    </button>
-                                    <h2 className="text-white text-xl font-bold">
-                                        {billingType === 'CREDIT_CARD' ? 'Dados do Cartão' : 'Dados para Cobrança'}
-                                    </h2>
-                                </div>
+                    {/* Etapa 1: Escolher Plano */}
+                    {etapa === 1 && (
+                        <div className="space-y-3">
+                            {plans.filter(p => p.slug !== 'free').map(plan => (
+                                <PlanOption key={plan.id} plan={plan} selected={planoSelecionado?.id === plan.id} onSelect={() => handleSelecionarPlano(plan)}
+                                    detail={plan.maxEmployees === 999 ? 'Ilimitado' : `Até ${plan.maxEmployees} funcionários`} />
+                            ))}
+                        </div>
+                    )}
 
-                                {billingType === 'CREDIT_CARD' ? (
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm text-brand-gray mb-1">Nome no Cartão</label>
-                                            <Input value={formCartao.holderName} onChange={e => setFormCartao({...formCartao, holderName: e.target.value.toUpperCase()})}
-                                                placeholder="NOME COMO NO CARTÃO" fullWidth />
-                                        </div>
+                    {/* Etapa 2: Forma de Pagamento */}
+                    {etapa === 2 && (
+                        <>
+                            <div className="bg-white/5 rounded-lg p-4">
+                                <p className="text-brand-gray text-sm">Plano selecionado:</p>
+                                <p className="text-white font-semibold">{planoSelecionado?.name} - {formatarMoeda(planoSelecionado?.price)}/mês</p>
+                            </div>
 
-                                        <div>
-                                            <label className="block text-sm text-brand-gray mb-1">Número do Cartão</label>
-                                            <Input value={formCartao.number} onChange={e => setFormCartao({...formCartao, number: e.target.value.replace(/\D/g, '').slice(0, 16)})}
-                                                placeholder="0000 0000 0000 0000" fullWidth />
-                                        </div>
+                            {!subscription || subscription.status === 'NONE' ? (
+                                <label className="flex items-center gap-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg cursor-pointer">
+                                    <input type="checkbox" checked={usarTrial} onChange={e => setUsarTrial(e.target.checked)}
+                                        className="size-5 shrink-0 rounded border-white/20 bg-brand-darker text-brand-purple focus:ring-brand-purple" />
+                                    <span>
+                                        <span className="block text-white font-medium">Começar com 7 dias grátis</span>
+                                        <span className="block text-blue-400 text-sm">Teste todas as funcionalidades sem compromisso</span>
+                                    </span>
+                                </label>
+                            ) : null}
 
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">Mês</label>
-                                                <Input value={formCartao.expiryMonth} onChange={e => setFormCartao({...formCartao, expiryMonth: e.target.value.replace(/\D/g, '').slice(0, 2)})}
-                                                    placeholder="MM" fullWidth />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">Ano</label>
-                                                <Input value={formCartao.expiryYear} onChange={e => setFormCartao({...formCartao, expiryYear: e.target.value.replace(/\D/g, '').slice(0, 4)})}
-                                                    placeholder="AAAA" fullWidth />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">CVV</label>
-                                                <Input type="password" value={formCartao.ccv} onChange={e => setFormCartao({...formCartao, ccv: e.target.value.replace(/\D/g, '').slice(0, 4)})}
-                                                    placeholder="***" fullWidth />
-                                            </div>
-                                        </div>
+                            {!usarTrial && <BillingTypePicker value={billingType} onChange={setBillingType} />}
 
-                                        <hr className="border-white/10 my-4" />
+                            {erro && <p role="alert" className="text-red-400 text-sm text-center">{erro}</p>}
+                        </>
+                    )}
 
-                                        <h4 className="text-white font-medium">Dados do Titular</h4>
+                    {/* Etapa 3: Dados de Pagamento */}
+                    {etapa === 3 && (
+                        <>
+                            {billingType === 'CREDIT_CARD'
+                                ? <CardFields idPrefix="nova" formCartao={formCartao} setFormCartao={setFormCartao} formTitular={formTitular} setFormTitular={setFormTitular} fullHolder />
+                                : <CustomerFields idPrefix="nova" form={formCliente} setForm={setFormCliente} withName withPhone />}
 
-                                        <div>
-                                            <label className="block text-sm text-brand-gray mb-1">Nome Completo</label>
-                                            <Input value={formTitular.name} onChange={e => setFormTitular({...formTitular, name: e.target.value})}
-                                                placeholder="Nome completo" fullWidth />
-                                        </div>
+                            {erro && <p role="alert" className="text-red-400 text-sm">{erro}</p>}
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">CPF/CNPJ</label>
-                                                <Input value={formTitular.cpfCnpj} onChange={e => setFormTitular({...formTitular, cpfCnpj: e.target.value.replace(/\D/g, '')})}
-                                                    placeholder="Apenas números" fullWidth />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">Telefone</label>
-                                                <Input value={formTitular.phone} onChange={e => setFormTitular({...formTitular, phone: e.target.value.replace(/\D/g, '')})}
-                                                    placeholder="(00) 00000-0000" fullWidth />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">CEP</label>
-                                                <Input value={formTitular.postalCode} onChange={e => setFormTitular({...formTitular, postalCode: e.target.value.replace(/\D/g, '').slice(0, 8)})}
-                                                    placeholder="00000-000" fullWidth />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">Número</label>
-                                                <Input value={formTitular.addressNumber} onChange={e => setFormTitular({...formTitular, addressNumber: e.target.value})}
-                                                    placeholder="Nº" fullWidth />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm text-brand-gray mb-1">Email</label>
-                                            <Input type="email" value={formTitular.email} onChange={e => setFormTitular({...formTitular, email: e.target.value})}
-                                                placeholder="email@exemplo.com" fullWidth />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm text-brand-gray mb-1">Nome Completo</label>
-                                            <Input value={formCliente.name} onChange={e => setFormCliente({...formCliente, name: e.target.value})}
-                                                placeholder="Nome completo" fullWidth />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm text-brand-gray mb-1">Email</label>
-                                            <Input type="email" value={formCliente.email} onChange={e => setFormCliente({...formCliente, email: e.target.value})}
-                                                placeholder="email@exemplo.com" fullWidth />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">CPF/CNPJ *</label>
-                                                <Input value={formCliente.cpfCnpj} onChange={e => setFormCliente({...formCliente, cpfCnpj: e.target.value.replace(/\D/g, '')})}
-                                                    placeholder="Apenas números" fullWidth required />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm text-brand-gray mb-1">Telefone</label>
-                                                <Input value={formCliente.phone} onChange={e => setFormCliente({...formCliente, phone: e.target.value.replace(/\D/g, '')})}
-                                                    placeholder="(00) 00000-0000" fullWidth />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {erro && (
-                                    <p className="text-red-400 text-sm mt-4">{erro}</p>
-                                )}
-
-                                <div className="flex gap-3 mt-6">
-                                    <Button onClick={closeModalNovaAssinatura} variant="outline" fullWidth>
-                                        Cancelar
-                                    </Button>
-                                    <Button onClick={handleCriarAssinatura} disabled={actionLoading} fullWidth>
-                                        {actionLoading ? 'Processando...' : 'Finalizar'}
-                                    </Button>
-                                </div>
-
-                                <div className="flex items-center justify-center gap-2 mt-4 text-brand-gray text-xs">
-                                    <Shield size={14} />
-                                    Pagamento seguro processado pela ASAAS
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
+                            <div className="flex items-center justify-center gap-2 text-brand-gray text-xs">
+                                <Shield size={14} aria-hidden="true" />
+                                Pagamento seguro processado pela ASAAS
+                            </div>
+                        </>
+                    )}
+                </ResponsiveModal>
             )}
 
             {/* Modal Trocar Plano */}
             {modalTrocarPlano && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModalTrocarPlano(false)}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-white text-xl font-bold mb-6">Trocar Plano</h2>
-
-                        <div className="bg-white/5 rounded-lg p-4 mb-6">
-                            <p className="text-brand-gray text-sm">Plano atual:</p>
-                            <p className="text-white font-semibold">{subscription?.plan?.name}</p>
-                        </div>
-
-                        <div className="space-y-3 mb-6">
-                            {planosFiltrados.map(plan => (
-                                <div key={plan.id} onClick={() => setPlanoSelecionado(plan)}
-                                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all
-                                        ${planoSelecionado?.id === plan.id 
-                                            ? 'border-brand-purple bg-brand-purple/10' 
-                                            : 'border-white/10 hover:border-white/30'}`}>
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <h4 className="text-white font-semibold">{plan.name}</h4>
-                                            <p className="text-brand-gray text-sm">{plan.maxEmployees} funcionários</p>
-                                        </div>
-                                        <p className="text-brand-blue font-bold">{formatarMoeda(plan.price)}/mês</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {planosFiltrados.length === 0 && (
-                            <p className="text-brand-gray text-center py-4">Você já está no melhor plano disponível!</p>
-                        )}
-
-                        {erro && <p className="text-red-400 text-sm mb-4">{erro}</p>}
-
-                        <div className="flex gap-3">
-                            <Button onClick={() => setModalTrocarPlano(false)} variant="outline" fullWidth>
-                                Cancelar
-                            </Button>
-                            <Button onClick={handleTrocarPlano} disabled={!planoSelecionado || actionLoading} fullWidth>
-                                {actionLoading ? 'Alterando...' : 'Confirmar'}
-                            </Button>
-                        </div>
+                <ResponsiveModal title="Trocar Plano" onClose={() => setModalTrocarPlano(false)}
+                    footer={
+                        <>
+                            <Button onClick={() => setModalTrocarPlano(false)} variant="outline" fullWidth>Cancelar</Button>
+                            <Button onClick={handleTrocarPlano} disabled={!planoSelecionado || actionLoading} fullWidth>{actionLoading ? 'Alterando...' : 'Confirmar'}</Button>
+                        </>
+                    }>
+                    <div className="bg-white/5 rounded-lg p-4">
+                        <p className="text-brand-gray text-sm">Plano atual:</p>
+                        <p className="text-white font-semibold">{subscription?.plan?.name}</p>
                     </div>
-                </div>
+
+                    <div className="space-y-3">
+                        {planosFiltrados.map(plan => (
+                            <PlanOption key={plan.id} plan={plan} selected={planoSelecionado?.id === plan.id} onSelect={() => setPlanoSelecionado(plan)}
+                                detail={`${plan.maxEmployees} funcionários`} />
+                        ))}
+                    </div>
+
+                    {planosFiltrados.length === 0 && (
+                        <p className="text-brand-gray text-center py-4">Você já está no melhor plano disponível!</p>
+                    )}
+
+                    {erro && <p role="alert" className="text-red-400 text-sm">{erro}</p>}
+                </ResponsiveModal>
             )}
 
             {/* Modal Converter Trial */}
             {modalPagamento && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModalPagamento(false)}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-white text-xl font-bold mb-6">Ativar Assinatura</h2>
-
-                        <div className="bg-white/5 rounded-lg p-4 mb-6">
-                            <p className="text-brand-gray text-sm">Plano:</p>
-                            <p className="text-white font-semibold">{subscription?.plan?.name} - {formatarMoeda(subscription?.plan?.price)}/mês</p>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3 mb-6">
-                            {Object.entries(BILLING_TYPES).map(([key, config]) => {
-                                const Icon = config.icon;
-                                return (
-                                    <button key={key} onClick={() => setBillingType(key)}
-                                        className={`p-4 rounded-lg border-2 text-center transition-all
-                                            ${billingType === key 
-                                                ? 'border-brand-purple bg-brand-purple/10' 
-                                                : 'border-white/10 hover:border-white/30'}`}>
-                                        <Icon size={24} className={`mx-auto mb-2 ${billingType === key ? 'text-brand-purple' : 'text-brand-gray'}`} />
-                                        <span className={`text-sm ${billingType === key ? 'text-white' : 'text-brand-gray'}`}>
-                                            {config.label}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {billingType === 'CREDIT_CARD' ? (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">Nome no Cartão</label>
-                                    <Input value={formCartao.holderName} onChange={e => setFormCartao({...formCartao, holderName: e.target.value.toUpperCase()})}
-                                        placeholder="NOME COMO NO CARTÃO" fullWidth />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">Número do Cartão</label>
-                                    <Input value={formCartao.number} onChange={e => setFormCartao({...formCartao, number: e.target.value.replace(/\D/g, '').slice(0, 16)})}
-                                        placeholder="0000 0000 0000 0000" fullWidth />
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-brand-gray mb-1">Mês</label>
-                                        <Input value={formCartao.expiryMonth} onChange={e => setFormCartao({...formCartao, expiryMonth: e.target.value.replace(/\D/g, '').slice(0, 2)})}
-                                            placeholder="MM" fullWidth />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-brand-gray mb-1">Ano</label>
-                                        <Input value={formCartao.expiryYear} onChange={e => setFormCartao({...formCartao, expiryYear: e.target.value.replace(/\D/g, '').slice(0, 4)})}
-                                            placeholder="AAAA" fullWidth />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-brand-gray mb-1">CVV</label>
-                                        <Input type="password" value={formCartao.ccv} onChange={e => setFormCartao({...formCartao, ccv: e.target.value.replace(/\D/g, '').slice(0, 4)})}
-                                            placeholder="***" fullWidth />
-                                    </div>
-                                </div>
-
-                                <hr className="border-white/10" />
-
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">CPF/CNPJ do Titular</label>
-                                    <Input value={formTitular.cpfCnpj} onChange={e => setFormTitular({...formTitular, cpfCnpj: e.target.value.replace(/\D/g, '')})}
-                                        placeholder="Apenas números" fullWidth />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-brand-gray mb-1">CEP</label>
-                                        <Input value={formTitular.postalCode} onChange={e => setFormTitular({...formTitular, postalCode: e.target.value.replace(/\D/g, '').slice(0, 8)})}
-                                            placeholder="00000-000" fullWidth />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-brand-gray mb-1">Número</label>
-                                        <Input value={formTitular.addressNumber} onChange={e => setFormTitular({...formTitular, addressNumber: e.target.value})}
-                                            placeholder="Nº" fullWidth />
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">CPF/CNPJ *</label>
-                                    <Input value={formCliente.cpfCnpj} onChange={e => setFormCliente({...formCliente, cpfCnpj: e.target.value.replace(/\D/g, '')})}
-                                        placeholder="Apenas números" fullWidth required />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">Email</label>
-                                    <Input type="email" value={formCliente.email} onChange={e => setFormCliente({...formCliente, email: e.target.value})}
-                                        placeholder="email@exemplo.com" fullWidth />
-                                </div>
-                            </div>
-                        )}
-
-                        {erro && <p className="text-red-400 text-sm mt-4">{erro}</p>}
-
-                        <div className="flex gap-3 mt-6">
-                            <Button onClick={() => setModalPagamento(false)} variant="outline" fullWidth>
-                                Cancelar
-                            </Button>
-                            <Button onClick={handleConverterTrial} disabled={actionLoading} fullWidth>
-                                {actionLoading ? 'Processando...' : 'Ativar Assinatura'}
-                            </Button>
-                        </div>
+                <ResponsiveModal title="Ativar Assinatura" onClose={() => setModalPagamento(false)}
+                    footer={
+                        <>
+                            <Button onClick={() => setModalPagamento(false)} variant="outline" fullWidth>Cancelar</Button>
+                            <Button onClick={handleConverterTrial} disabled={actionLoading} fullWidth>{actionLoading ? 'Processando...' : 'Ativar'}</Button>
+                        </>
+                    }>
+                    <div className="bg-white/5 rounded-lg p-4">
+                        <p className="text-brand-gray text-sm">Plano:</p>
+                        <p className="text-white font-semibold">{subscription?.plan?.name} - {formatarMoeda(subscription?.plan?.price)}/mês</p>
                     </div>
-                </div>
+
+                    <BillingTypePicker value={billingType} onChange={setBillingType} />
+
+                    {billingType === 'CREDIT_CARD'
+                        ? <CardFields idPrefix="ativar" formCartao={formCartao} setFormCartao={setFormCartao} formTitular={formTitular} setFormTitular={setFormTitular} />
+                        : <CustomerFields idPrefix="ativar" form={formCliente} setForm={setFormCliente} />}
+
+                    {erro && <p role="alert" className="text-red-400 text-sm">{erro}</p>}
+                </ResponsiveModal>
             )}
 
             {/* Modal Atualizar Cartão */}
             {modalCartao && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModalCartao(false)}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-white text-xl font-bold mb-6">Atualizar Cartão</h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm text-brand-gray mb-1">Nome no Cartão</label>
-                                <Input value={formCartao.holderName} onChange={e => setFormCartao({...formCartao, holderName: e.target.value.toUpperCase()})}
-                                    placeholder="NOME COMO NO CARTÃO" fullWidth />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-brand-gray mb-1">Número do Cartão</label>
-                                <Input value={formCartao.number} onChange={e => setFormCartao({...formCartao, number: e.target.value.replace(/\D/g, '').slice(0, 16)})}
-                                    placeholder="0000 0000 0000 0000" fullWidth />
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">Mês</label>
-                                    <Input value={formCartao.expiryMonth} onChange={e => setFormCartao({...formCartao, expiryMonth: e.target.value.replace(/\D/g, '').slice(0, 2)})}
-                                        placeholder="MM" fullWidth />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">Ano</label>
-                                    <Input value={formCartao.expiryYear} onChange={e => setFormCartao({...formCartao, expiryYear: e.target.value.replace(/\D/g, '').slice(0, 4)})}
-                                        placeholder="AAAA" fullWidth />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">CVV</label>
-                                    <Input type="password" value={formCartao.ccv} onChange={e => setFormCartao({...formCartao, ccv: e.target.value.replace(/\D/g, '').slice(0, 4)})}
-                                        placeholder="***" fullWidth />
-                                </div>
-                            </div>
-
-                            <hr className="border-white/10" />
-
-                            <div>
-                                <label className="block text-sm text-brand-gray mb-1">CPF/CNPJ do Titular</label>
-                                <Input value={formTitular.cpfCnpj} onChange={e => setFormTitular({...formTitular, cpfCnpj: e.target.value.replace(/\D/g, '')})}
-                                    placeholder="Apenas números" fullWidth />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">CEP</label>
-                                    <Input value={formTitular.postalCode} onChange={e => setFormTitular({...formTitular, postalCode: e.target.value.replace(/\D/g, '').slice(0, 8)})}
-                                        placeholder="00000-000" fullWidth />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-brand-gray mb-1">Número</label>
-                                    <Input value={formTitular.addressNumber} onChange={e => setFormTitular({...formTitular, addressNumber: e.target.value})}
-                                        placeholder="Nº" fullWidth />
-                                </div>
-                            </div>
-                        </div>
-
-                        {erro && <p className="text-red-400 text-sm mt-4">{erro}</p>}
-
-                        <div className="flex gap-3 mt-6">
-                            <Button onClick={() => setModalCartao(false)} variant="outline" fullWidth>
-                                Cancelar
-                            </Button>
-                            <Button onClick={handleAtualizarCartao} disabled={actionLoading} fullWidth>
-                                {actionLoading ? 'Salvando...' : 'Salvar Cartão'}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+                <ResponsiveModal title="Atualizar Cartão" onClose={() => setModalCartao(false)}
+                    footer={
+                        <>
+                            <Button onClick={() => setModalCartao(false)} variant="outline" fullWidth>Cancelar</Button>
+                            <Button onClick={handleAtualizarCartao} disabled={actionLoading} fullWidth>{actionLoading ? 'Salvando...' : 'Salvar Cartão'}</Button>
+                        </>
+                    }>
+                    <CardFields idPrefix="cartao" formCartao={formCartao} setFormCartao={setFormCartao} formTitular={formTitular} setFormTitular={setFormTitular} />
+                    {erro && <p role="alert" className="text-red-400 text-sm">{erro}</p>}
+                </ResponsiveModal>
             )}
 
             {/* Modal Cancelar Assinatura */}
             {modalCancelar && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModalCancelar(false)}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <AlertTriangle size={32} className="text-red-400" />
-                            </div>
-                            <h2 className="text-white text-xl font-bold">Cancelar Assinatura</h2>
-                            <p className="text-brand-gray mt-2">
-                                Tem certeza que deseja cancelar sua assinatura?
-                            </p>
+                <ResponsiveModal title="Cancelar Assinatura" onClose={() => setModalCancelar(false)}
+                    footer={
+                        <>
+                            <Button onClick={() => setModalCancelar(false)} variant="outline" fullWidth>Manter</Button>
+                            <Button onClick={handleCancelarAssinatura} disabled={actionLoading} variant="destructive" fullWidth>{actionLoading ? 'Cancelando...' : 'Cancelar Assinatura'}</Button>
+                        </>
+                    }>
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle size={32} className="text-red-400" aria-hidden="true" />
                         </div>
-
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
-                            <p className="text-red-400 text-sm">
-                                Ao cancelar, você perderá acesso a:
-                            </p>
-                            <ul className="text-red-400 text-sm mt-2 space-y-1">
-                                {parseFeatures(subscription?.plan?.features).map((feature, index) => (
-                                    <li key={index}>• {PLAN_FEATURE_LABELS[feature] || feature}</li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        {erro && <p className="text-red-400 text-sm mb-4">{erro}</p>}
-
-                        <div className="flex gap-3">
-                            <Button onClick={() => setModalCancelar(false)} variant="outline" fullWidth>
-                                Manter Assinatura
-                            </Button>
-                            <Button onClick={handleCancelarAssinatura} disabled={actionLoading} variant="destructive" fullWidth>
-                                {actionLoading ? 'Cancelando...' : 'Cancelar'}
-                            </Button>
-                        </div>
+                        <p className="text-brand-gray">Tem certeza que deseja cancelar sua assinatura?</p>
                     </div>
-                </div>
+
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                        <p className="text-red-400 text-sm">Ao cancelar, você perderá acesso a:</p>
+                        <ul className="text-red-400 text-sm mt-2 space-y-1">
+                            {parseFeatures(subscription?.plan?.features).map((feature, index) => (
+                                <li key={index}>• {PLAN_FEATURE_LABELS[feature] || feature}</li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {erro && <p role="alert" className="text-red-400 text-sm">{erro}</p>}
+                </ResponsiveModal>
             )}
 
             {/* Modal Detalhes do Pagamento */}
             {modalDetalhesPagamento && (detalhesPagamento || pagamentoSelecionado) && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => { setModalDetalhesPagamento(false); setDetalhesPagamento(null); setPagamentoSelecionado(null); }}>
-                    <div className="bg-brand-dark border border-white/10 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-white text-xl font-bold mb-6">Detalhes do Pagamento</h2>
+                <ResponsiveModal title="Detalhes do Pagamento" onClose={() => { setModalDetalhesPagamento(false); setDetalhesPagamento(null); setPagamentoSelecionado(null); }}
+                    footer={
+                        <Button onClick={() => { setModalDetalhesPagamento(false); setDetalhesPagamento(null); setPagamentoSelecionado(null); }} variant="outline" fullWidth>Fechar</Button>
+                    }>
+                    {/* QR Code PIX */}
+                    {(detalhesPagamento?.pixQrCode || detalhesPagamento?.pixCopyPaste) && (
+                        <div className="text-center">
+                            <p className="text-brand-gray text-sm mb-4">Escaneie o QR Code ou copie o código PIX:</p>
 
-                        {/* QR Code PIX */}
-                        {(detalhesPagamento?.pixQrCode || detalhesPagamento?.pixCopyPaste) && (
-                            <div className="text-center mb-6">
-                                <p className="text-brand-gray text-sm mb-4">Escaneie o QR Code ou copie o código PIX:</p>
-                                
-                                {detalhesPagamento.pixQrCode && (
-                                    <img src={`data:image/png;base64,${detalhesPagamento.pixQrCode}`} 
-                                        alt="QR Code PIX" className="mx-auto mb-4 rounded-lg" />
-                                )}
+                            {detalhesPagamento.pixQrCode && (
+                                <img src={`data:image/png;base64,${detalhesPagamento.pixQrCode}`}
+                                    alt="QR Code PIX" className="mx-auto mb-4 w-full max-w-60 rounded-lg" />
+                            )}
 
-                                {detalhesPagamento.pixCopyPaste && (
-                                    <div className="bg-white/5 rounded-lg p-3">
-                                        <p className="text-white text-xs break-all mb-2">{detalhesPagamento.pixCopyPaste}</p>
-                                        <Button onClick={() => copiarParaClipboard(detalhesPagamento.pixCopyPaste)} size="sm" fullWidth>
-                                            Copiar Código PIX
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Boleto */}
-                        {(detalhesPagamento?.boletoUrl || detalhesPagamento?.boletoBarcode) && (
-                            <div className="space-y-4 mb-6">
-                                {detalhesPagamento.boletoBarcode && (
-                                    <div className="bg-white/5 rounded-lg p-3">
-                                        <p className="text-brand-gray text-xs mb-2">Linha digitável:</p>
-                                        <p className="text-white text-sm break-all mb-2">{detalhesPagamento.boletoBarcode}</p>
-                                        <Button onClick={() => copiarParaClipboard(detalhesPagamento.boletoBarcode)} size="sm" fullWidth variant="outline">
-                                            Copiar Código
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {detalhesPagamento.boletoUrl && (
-                                    <a href={detalhesPagamento.boletoUrl} target="_blank" rel="noopener noreferrer">
-                                        <Button fullWidth>
-                                            Abrir Boleto
-                                        </Button>
-                                    </a>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Informações do pagamento */}
-                        {pagamentoSelecionado && (
-                            <div className="space-y-3 mb-6">
-                                <div className="flex justify-between">
-                                    <span className="text-brand-gray">Valor:</span>
-                                    <span className="text-white font-medium">{formatarMoeda(pagamentoSelecionado.value)}</span>
+                            {detalhesPagamento.pixCopyPaste && (
+                                <div className="bg-white/5 rounded-lg p-3">
+                                    <p className="text-white text-xs break-all mb-2">{detalhesPagamento.pixCopyPaste}</p>
+                                    <Button onClick={() => copiarParaClipboard(detalhesPagamento.pixCopyPaste)} size="sm" fullWidth>
+                                        Copiar Código PIX
+                                    </Button>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-brand-gray">Vencimento:</span>
-                                    <span className="text-white">{formatarData(pagamentoSelecionado.dueDate)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-brand-gray">Status:</span>
-                                    <span className={`text-sm px-2 py-1 rounded
-                                        ${pagamentoSelecionado.status === 'RECEIVED' || pagamentoSelecionado.status === 'CONFIRMED' ? 'bg-green-500/20 text-green-400' :
-                                          pagamentoSelecionado.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-                                        {pagamentoSelecionado.status === 'RECEIVED' || pagamentoSelecionado.status === 'CONFIRMED' ? 'Pago' :
-                                         pagamentoSelecionado.status === 'PENDING' ? 'Pendente' : 'Vencido'}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
+                    )}
 
-                        <Button onClick={() => { setModalDetalhesPagamento(false); setDetalhesPagamento(null); setPagamentoSelecionado(null); }} 
-                            variant="outline" fullWidth>
-                            Fechar
-                        </Button>
-                    </div>
-                </div>
+                    {/* Boleto */}
+                    {(detalhesPagamento?.boletoUrl || detalhesPagamento?.boletoBarcode) && (
+                        <div className="space-y-4">
+                            {detalhesPagamento.boletoBarcode && (
+                                <div className="bg-white/5 rounded-lg p-3">
+                                    <p className="text-brand-gray text-xs mb-2">Linha digitável:</p>
+                                    <p className="text-white text-sm break-all mb-2">{detalhesPagamento.boletoBarcode}</p>
+                                    <Button onClick={() => copiarParaClipboard(detalhesPagamento.boletoBarcode)} size="sm" fullWidth variant="outline">
+                                        Copiar Código
+                                    </Button>
+                                </div>
+                            )}
+
+                            {detalhesPagamento.boletoUrl && (
+                                <a href={detalhesPagamento.boletoUrl} target="_blank" rel="noopener noreferrer"
+                                    className="flex min-h-11 w-full items-center justify-center rounded-lg bg-gradient-to-r from-brand-blue to-brand-purple px-6 py-3 font-semibold text-white">
+                                    Abrir Boleto
+                                </a>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Informações do pagamento */}
+                    {pagamentoSelecionado && (
+                        <dl className="space-y-3">
+                            <div className="flex justify-between">
+                                <dt className="text-brand-gray">Valor:</dt>
+                                <dd className="text-white font-medium">{formatarMoeda(pagamentoSelecionado.value)}</dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-brand-gray">Vencimento:</dt>
+                                <dd className="text-white">{formatarData(pagamentoSelecionado.dueDate)}</dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-brand-gray">Status:</dt>
+                                <dd className={`text-sm px-2 py-1 rounded
+                                    ${pagamentoSelecionado.status === 'RECEIVED' || pagamentoSelecionado.status === 'CONFIRMED' ? 'bg-green-500/20 text-green-400' :
+                                      pagamentoSelecionado.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                                    {pagamentoSelecionado.status === 'RECEIVED' || pagamentoSelecionado.status === 'CONFIRMED' ? 'Pago' :
+                                     pagamentoSelecionado.status === 'PENDING' ? 'Pendente' : 'Vencido'}
+                                </dd>
+                            </div>
+                        </dl>
+                    )}
+                </ResponsiveModal>
+            )}
+        </div>
+    );
+}
+
+// ---- Shared form pieces (module scope: stable identity, no remount while typing) ----
+
+const LABEL = 'block text-sm text-brand-gray mb-1';
+
+function Field({ id, label, className = '', ...inputProps })
+{
+    return (
+        <div className={`min-w-0 ${className}`}>
+            <label htmlFor={id} className={LABEL}>{label}</label>
+            <Input id={id} fullWidth {...inputProps} />
+        </div>
+    );
+}
+
+function PlanOption({ plan, selected, onSelect, detail })
+{
+    return (
+        <button type="button" onClick={onSelect} aria-pressed={selected}
+            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${selected ? 'border-brand-purple bg-brand-purple/10' : 'border-white/10 hover:border-white/30'}`}>
+            <span className="flex justify-between items-center gap-3">
+                <span className="min-w-0">
+                    <span className="block text-white font-semibold">{plan.name}</span>
+                    <span className="block text-brand-gray text-sm">{detail}</span>
+                </span>
+                <span className="shrink-0 text-brand-blue font-bold">{formatarMoeda(plan.price)}/mês</span>
+            </span>
+        </button>
+    );
+}
+
+function BillingTypePicker({ value, onChange })
+{
+    return (
+        <div className="grid grid-cols-3 gap-2" role="group" aria-label="Forma de pagamento">
+            {Object.entries(BILLING_TYPES).map(([key, config]) => {
+                const Icon = config.icon;
+                const active = value === key;
+                return (
+                    <button key={key} type="button" onClick={() => onChange(key)} aria-pressed={active}
+                        className={`min-h-20 p-3 rounded-lg border-2 text-center transition-all ${active ? 'border-brand-purple bg-brand-purple/10' : 'border-white/10 hover:border-white/30'}`}>
+                        <Icon size={24} className={`mx-auto mb-1 ${active ? 'text-brand-purple' : 'text-brand-gray'}`} aria-hidden="true" />
+                        <span className={`text-sm ${active ? 'text-white' : 'text-brand-gray'}`}>{config.label}</span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+const digits = (v, max?) => (max ? v.replace(/\D/g, '').slice(0, max) : v.replace(/\D/g, ''));
+
+function CardFields({ idPrefix, formCartao, setFormCartao, formTitular, setFormTitular, fullHolder = false })
+{
+    const p = (n) => `${idPrefix}-${n}`;
+    return (
+        <div className="space-y-4">
+            <Field id={p('cc-nome')} label="Nome no Cartão" value={formCartao.holderName} autoComplete="cc-name" autoCapitalize="characters"
+                onChange={e => setFormCartao({ ...formCartao, holderName: e.target.value.toUpperCase() })} placeholder="NOME COMO NO CARTÃO" />
+
+            <Field id={p('cc-numero')} label="Número do Cartão" value={formCartao.number} inputMode="numeric" autoComplete="cc-number"
+                onChange={e => setFormCartao({ ...formCartao, number: digits(e.target.value, 16) })} placeholder="0000 0000 0000 0000" />
+
+            <div className="grid grid-cols-3 gap-3">
+                <Field id={p('cc-mes')} label="Mês" value={formCartao.expiryMonth} inputMode="numeric" autoComplete="cc-exp-month"
+                    onChange={e => setFormCartao({ ...formCartao, expiryMonth: digits(e.target.value, 2) })} placeholder="MM" />
+                <Field id={p('cc-ano')} label="Ano" value={formCartao.expiryYear} inputMode="numeric" autoComplete="cc-exp-year"
+                    onChange={e => setFormCartao({ ...formCartao, expiryYear: digits(e.target.value, 4) })} placeholder="AAAA" />
+                <Field id={p('cc-cvv')} label="CVV" type="password" value={formCartao.ccv} inputMode="numeric" autoComplete="cc-csc"
+                    onChange={e => setFormCartao({ ...formCartao, ccv: digits(e.target.value, 4) })} placeholder="***" />
+            </div>
+
+            <hr className="border-white/10" />
+
+            {fullHolder && (
+                <>
+                    <h3 className="text-white font-medium">Dados do Titular</h3>
+                    <Field id={p('tit-nome')} label="Nome Completo" value={formTitular.name} autoComplete="name"
+                        onChange={e => setFormTitular({ ...formTitular, name: e.target.value })} placeholder="Nome completo" />
+                </>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+                <Field id={p('tit-doc')} label={fullHolder ? 'CPF/CNPJ' : 'CPF/CNPJ do Titular'} value={formTitular.cpfCnpj} inputMode="numeric" autoComplete="off"
+                    className={fullHolder ? '' : 'col-span-2'} onChange={e => setFormTitular({ ...formTitular, cpfCnpj: digits(e.target.value) })} placeholder="Apenas números" />
+                {fullHolder && (
+                    <Field id={p('tit-tel')} label="Telefone" type="tel" value={formTitular.phone} inputMode="tel" autoComplete="tel"
+                        onChange={e => setFormTitular({ ...formTitular, phone: digits(e.target.value) })} placeholder="(00) 00000-0000" />
+                )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <Field id={p('tit-cep')} label="CEP" value={formTitular.postalCode} inputMode="numeric" autoComplete="postal-code"
+                    onChange={e => setFormTitular({ ...formTitular, postalCode: digits(e.target.value, 8) })} placeholder="00000-000" />
+                <Field id={p('tit-numero')} label="Número" value={formTitular.addressNumber} inputMode="numeric" autoComplete="off"
+                    onChange={e => setFormTitular({ ...formTitular, addressNumber: e.target.value })} placeholder="Nº" />
+            </div>
+
+            {fullHolder && (
+                <Field id={p('tit-email')} label="Email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" value={formTitular.email}
+                    onChange={e => setFormTitular({ ...formTitular, email: e.target.value })} placeholder="email@exemplo.com" />
+            )}
+        </div>
+    );
+}
+
+function CustomerFields({ idPrefix, form, setForm, withName = false, withPhone = false })
+{
+    const p = (n) => `${idPrefix}-${n}`;
+    return (
+        <div className="space-y-4">
+            {withName && (
+                <Field id={p('cli-nome')} label="Nome Completo" value={form.name} autoComplete="name"
+                    onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome completo" />
+            )}
+            {withName && (
+                <Field id={p('cli-email')} label="Email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" value={form.email}
+                    onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@exemplo.com" />
+            )}
+            <div className="grid grid-cols-2 gap-3">
+                <Field id={p('cli-doc')} label="CPF/CNPJ *" value={form.cpfCnpj} inputMode="numeric" autoComplete="off" required
+                    className={withPhone ? '' : 'col-span-2'} onChange={e => setForm({ ...form, cpfCnpj: digits(e.target.value) })} placeholder="Apenas números" />
+                {withPhone && (
+                    <Field id={p('cli-tel')} label="Telefone" type="tel" value={form.phone} inputMode="tel" autoComplete="tel"
+                        onChange={e => setForm({ ...form, phone: digits(e.target.value) })} placeholder="(00) 00000-0000" />
+                )}
+            </div>
+            {!withName && (
+                <Field id={p('cli-email')} label="Email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" value={form.email}
+                    onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@exemplo.com" />
             )}
         </div>
     );

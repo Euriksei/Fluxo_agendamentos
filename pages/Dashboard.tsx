@@ -245,7 +245,7 @@ export default function Dashboard()
                         <div className="bg-brand-darker p-2 rounded-xl">
                             <QRCodeComponent value={bookingLink} size={150} />
                         </div>
-                        <Button onClick={handleDownloadQR} variant="outline" className="flex items-center justify-center gap-2 py-2! px-4! text-sm font-bold">
+                        <Button onClick={handleDownloadQR} variant="outline" className="px-4! text-sm font-bold">
                             <Download size={14} /> Baixar QR Code
                         </Button>
                     </div>
@@ -307,7 +307,7 @@ export default function Dashboard()
                             <Calendar size={20} className="text-brand-purple" />
                             Agendamentos de Hoje
                         </h3>
-                        <Link to="/agenda" className="text-brand-purple hover:text-brand-blue text-sm flex items-center gap-1">
+                        <Link to="/agenda" className="-my-2 inline-flex min-h-11 shrink-0 items-center gap-1 text-brand-purple hover:text-brand-blue text-sm">
                             Ver todos <ChevronRight size={16} />
                         </Link>
                     </div>
@@ -352,7 +352,7 @@ export default function Dashboard()
                             <Clock size={20} className="text-brand-purple" />
                             Próximos Agendamentos
                         </h3>
-                        <Link to="/agenda" className="text-brand-purple hover:text-brand-blue text-sm flex items-center gap-1">
+                        <Link to="/agenda" className="-my-2 inline-flex min-h-11 shrink-0 items-center gap-1 text-brand-purple hover:text-brand-blue text-sm">
                             Ver todos <ChevronRight size={16} />
                         </Link>
                     </div>
@@ -406,7 +406,7 @@ export default function Dashboard()
                             <DollarSign size={20} className="text-brand-purple" />
                             Movimentações Recentes
                         </h3>
-                        <Link to="/caixa" className="text-brand-purple hover:text-brand-blue text-sm flex items-center gap-1">
+                        <Link to="/caixa" className="-my-2 inline-flex min-h-11 shrink-0 items-center gap-1 text-brand-purple hover:text-brand-blue text-sm">
                             Ver fluxo completo <ChevronRight size={16} />
                         </Link>
                     </div>
@@ -414,37 +414,25 @@ export default function Dashboard()
                     {recentFlows.length > 0 
                     ? 
                     (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="text-left border-b border-white/10">
-                                        <th className="text-brand-gray text-sm font-medium pb-3">Data</th>
-                                        <th className="text-brand-gray text-sm font-medium pb-3">Descrição</th>
-                                        <th className="text-brand-gray text-sm font-medium pb-3">Profissional</th>
-                                        <th className="text-brand-gray text-sm font-medium pb-3">Valor</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recentFlows.map(flow => (
-                                        <tr key={flow.id} className="border-b border-white/5">
-                                            <td className="py-3 text-white text-sm">
-                                                {formatarData(flow.date || flow.created_at)}
-                                            </td>
-                                            <td className="py-3 text-white text-sm">
-                                                {flow.description || flow.type || '-'}
-                                            </td>
-                                            <td className="py-3 text-brand-gray text-sm">
-                                                {flow.userName || '-'}
-                                            </td>
-                                            <td className={`py-3 text-sm font-medium ${flow.type === 'INCOME' || flow.value > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                {flow.type === 'INCOME' || flow.value > 0 ? '+' : ''}
-                                                {formatarMoeda(Math.abs(flow.value))}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <ul className="divide-y divide-white/5">
+                            {recentFlows.map(flow => 
+                            {
+                                const saida = flow.type === 'SAIDA';
+                                return (
+                                    <li key={flow.id} className="flex items-center justify-between gap-3 py-3">
+                                        <div className="min-w-0">
+                                            <p className="text-white text-sm truncate">{flow.category === 'SYSTEM' ? 'Agendamento' : (flow.description || flow.category || '-')}</p>
+                                            <p className="text-brand-gray text-xs truncate">
+                                                {formatarData(flow.date || flow.created_at)}{flow.userName ? ` · ${flow.userName}` : ''}
+                                            </p>
+                                        </div>
+                                        <span className={`shrink-0 text-sm font-medium ${saida ? 'text-red-500' : 'text-green-500'}`}>
+                                            {saida ? '-' : '+'}{formatarMoeda(Math.abs(flow.value))}
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
                     ) 
                     : 
                     (
