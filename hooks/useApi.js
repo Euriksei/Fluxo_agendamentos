@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://localhost:3001';
+// Vazio = mesma origem: em dev o Vite faz proxy de /api para o backend (vite.config.ts)
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 export const notifyError = (message) => { window.dispatchEvent(new CustomEvent('app:notification', { detail: { message, type: 'error' } })); };
 export const notifySuccess = (message) => { window.dispatchEvent(new CustomEvent('app:notification', { detail: { message, type: 'success' } })); };
@@ -70,6 +71,7 @@ export function useApi()
                 // Keep the HTTP status so callers can tell a 404 from a network failure (TypeError, no status).
                 const httpError = new Error(data.error || 'Erro na requisição');
                 httpError.status = response.status;
+                httpError.data = data;
                 throw httpError;
             }
 
