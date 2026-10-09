@@ -1,72 +1,33 @@
-import { useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/contexts/AuthContext';
 
 import { ROLE_LABELS } from '@/types';
 
-import { NavLink } from '@/components/NavLink';
-import { LogOut } from 'lucide-react';
+import SidebarLayout, { SidebarItem } from '@/components/SidebarLayout';
 
 export default function Layout() 
 {
     const { user, logout } = useAuth();
-    const userRole = ROLE_LABELS[user.user.role] || 'Desconhecido';
+    const role = user.user.role;
 
-    const [collapsed, setCollapsed] = useState(true);
+    if (role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
 
-    if (user?.user.role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
+    const items: SidebarItem[] = 
+    [
+        { to: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+        { to: '/agenda', label: 'Agenda', icon: 'Calendar' },
+        { to: '/horarios', label: 'Horários', icon: 'Clock' },
+        ...(role === 'BARBER' ? 
+        [
+            { to: '/caixa', label: 'Caixa', icon: 'DollarSign' },
+            { to: '/servicos', label: 'Serviços', icon: 'Toolbox' },
+            { to: '/equipe', label: 'Equipe', icon: 'Users' },
+            { to: '/assinatura', label: 'Assinatura', icon: 'CreditCard' },
+        ] as SidebarItem[] : []),
+    ];
 
     return (
-        <div className="flex flex-col md:flex-row">
-
-            {!collapsed && ( <div className="hidden md:block  fixed inset-0 bg-black/80 z-30" onClick={() => setCollapsed(true)} /> )}
-
-            <aside className={`fixed z-40 w-full md:min-h-screen ${collapsed ? "md:w-20" : "md:w-56"} bg-brand-black text-white flex md:flex-col justify-center 
-                    md:justify-between transition-all duration-300`} >
-
-                <div className="flex gap-8 md:flex-col md:gap-0">
-                    <div className={`hidden p-4 border-b border-gray-700 md:flex ${collapsed ? "justify-center" : "justify-between"} items-center`}>
-                        {!collapsed && 
-                        (
-                            <div>
-                                <h2 className="text-lg font-bold">{user.user.shop}</h2>
-                                <p className="text-sm text-gray-400">{userRole}</p>
-                            </div>
-                        )}
-
-                        <button onClick={() => setCollapsed(!collapsed)} className="text-gray-400 hover:text-white text-sm" >
-                            {collapsed ? ">>" : "<<"}
-                        </button>
-                    </div>
-
-                    <nav className="flex flex-row md:flex-col gap-4 p-4 md:p-6 md:space-y-2">
-                        <NavLink to="/dashboard" label="Dashboard" icon="LayoutDashboard" collapsed={collapsed} />
-                        <NavLink to="/agenda" label="Agenda" icon="Calendar" collapsed={collapsed} />
-                        <NavLink to="/horarios" label="Horários" icon="Clock" collapsed={collapsed} />
-                        {user.user.role === "BARBER" && ( <NavLink to="/caixa" label="Caixa" icon="DollarSign" collapsed={collapsed} /> )}
-                        {user.user.role === "BARBER" && ( <NavLink to="/servicos" label="Serviços" icon="Toolbox" collapsed={collapsed} /> )}
-                        {user.user.role === "BARBER" && ( <NavLink to="/equipe" label="Equipe" icon="Users" collapsed={collapsed} /> )}
-                        {user.user.role === "BARBER" && ( <NavLink to="/assinatura" label="Assinatura" icon="CreditCard" collapsed={collapsed} /> )}
-
-                        <button onClick={logout} aria-label="Sair" title="Sair" className="block md:hidden text-red-400 hover:text-red-300"><LogOut size={18} /></button>
-                    </nav>
-                </div>
-
-                <div className="hidden md:flex items-center justify-center p-4 border-t border-gray-700">
-                    <button onClick={logout} aria-label="Sair" title="Sair" className="flex items-center justify-center gap-2 w-full text-sm text-center text-red-400 hover:text-red-300" >
-                        <LogOut size={18} /> 
-                        {!collapsed && "Sair"}
-                    </button>
-                </div>
-            </aside>
-
-            {/* The aside is fixed (md:w-20), so offset main by its width instead of a fixed md:px-48 that left an empty dark band on the right. */}
-            <main className="min-h-screen flex-1 min-w-0 bg-linear-to-br from-brand-black via-brand-dark to-brand-black text-white px-4 pt-20 pb-10 sm:px-6 md:ml-20 md:px-10 md:py-12 xl:px-12">
-                <div className="mx-auto w-full max-w-[1760px]">
-                    <Outlet />
-                </div>
-            </main>
-        </div>
+        <SidebarLayout title={user.user.shop} subtitle={ROLE_LABELS[role] || 'Desconhecido'} items={items} onLogout={logout} storageKey="fluxo:sidebar-expanded" />
     );
 }

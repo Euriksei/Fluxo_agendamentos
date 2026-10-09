@@ -64,6 +64,12 @@ button, a {
     cursor: pointer;
 }
 
+/* Touch: no gray flash on tap, no double-tap zoom delay on controls */
+a, button, [role="button"], input, select, textarea, label {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
@@ -83,4 +89,15 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .animate-slide-in {
     animation: slide-in 0.3s ease-out;
+}
+/* Tables that become stacked cards on phones (<768px). Add className="table-cards" to the <table>
+   and data-label="Coluna" to each body <td>; an empty data-label hides the caption (e.g. actions). */
+@media (max-width: 767.98px) {
+    .table-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .table-cards, .table-cards tbody, .table-cards tr, .table-cards td { display: block; width: 100%; }
+    .table-cards tr { margin-bottom: 0.75rem; padding: 0.5rem 0; border: 1px solid rgb(255 255 255 / 0.06); border-radius: 0.75rem; background: var(--color-brand-dark); }
+    .table-cards td { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 1rem !important; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+    .table-cards td::before { content: attr(data-label); flex-shrink: 0; text-align: left; font-size: 0.75rem; color: var(--color-brand-gray); }
+    .table-cards td[data-label=""]::before { content: none; }
+    .table-cards td[data-label=""] { justify-content: flex-end; }
 }
