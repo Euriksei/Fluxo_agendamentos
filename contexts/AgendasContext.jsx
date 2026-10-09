@@ -30,25 +30,24 @@ export function AgendasProvider({ children })
         return data;
     }, [authRequest]);
 
-    const createAgenda = useCallback(async (agendaData) => 
+    // Accepts { dayOfWeek } or { daysOfWeek: number[] }; the API returns one agenda or an array (created in one transaction).
+    const createAgenda = useCallback(async (agendaData, options = {}) => 
     {
         const data = await authRequest('/api/agendas', 
         {
+            ...options,
             method: 'POST',
             body: JSON.stringify(agendaData),
         });
 
+        const created = Array.isArray(data) ? data : [data];
+
         // Upsert: substitui se já existe o dia
         setAgendas(prev => 
         {
-            const existingIndex = prev.findIndex(a => a.dayOfWeek === data.dayOfWeek);
-            if (existingIndex >= 0) 
-            {
-                const updated = [...prev];
-                updated[existingIndex] = data;
-                return updated;
-            }
-            return [...prev, data].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+            const byDay = new Map(prev.map(a => [a.dayOfWeek, a]));
+            created.forEach(a => byDay.set(a.dayOfWeek, a));
+            return [...byDay.values()].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
         });
 
         return data;
