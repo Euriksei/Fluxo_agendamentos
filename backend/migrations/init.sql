@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     userId INT NOT NULL,
     planId INT NOT NULL,
+    pendingPlanId INT NULL,
     asaasSubscriptionId VARCHAR(100),
     asaasCustomerId VARCHAR(100),
     status ENUM('ACTIVE', 'PENDING', 'TRIAL', 'OVERDUE', 'SUSPENDED', 'CANCELLED') DEFAULT 'PENDING',
@@ -175,6 +176,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (planId) REFERENCES plans(id),
+    FOREIGN KEY (pendingPlanId) REFERENCES plans(id) ON DELETE SET NULL,
     INDEX idx_user_status (userId, status),
     INDEX idx_asaas_subscription (asaasSubscriptionId)
 );

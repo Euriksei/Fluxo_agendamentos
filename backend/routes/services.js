@@ -2,13 +2,13 @@ import express from 'express';
 import pool from '../config/database.js';
 
 import { authenticateToken } from '../middlewares/authentication.js';
-import { checkSubscription, requireFeature } from '../middlewares/subscription.js';
+import { checkSubscription, requireFeature, requireBookingAvailable } from '../middlewares/subscription.js';
 
 import { getOwnerId } from '../utils/user.js';
 
 const router = express.Router();
 
-router.get('/barber/:id', async (req, res) => 
+router.get('/barber/:id', requireBookingAvailable(req => req.params.id), async (req, res) => 
 {
     try 
     {
@@ -28,7 +28,13 @@ router.get('/barber/:id', async (req, res) =>
     }
 });
 
-router.get('/:id/employees', async (req, res) => 
+const serviceOwner = async (req) => 
+{
+    const [service] = await pool.query('SELECT userId FROM services WHERE id = ?', [req.params.id]);
+    return service.length ? service[0].userId : null;
+};
+
+router.get('/:id/employees', requireBookingAvailable(serviceOwner), async (req, res) => 
 {
     try 
     {

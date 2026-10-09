@@ -2,7 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 
 import { authenticateToken } from '../middlewares/authentication.js';
-import { checkSubscription, requireFeature } from '../middlewares/subscription.js';
+import { checkSubscription, requireFeature, requireBookingAvailable } from '../middlewares/subscription.js';
 
 import { validateEmail, validatePhone } from '../utils/validations.js';
 import { normalizeTime, timeToMinutes, addMinutesToTime } from '../utils/time.js';
@@ -10,19 +10,33 @@ import { toLocalDateString } from '../utils/date.js';
 
 const router = express.Router();
 
+// Só dígitos, sem o DDI 55 (o telefone é gravado como DDD + número)
+const onlyDigits = (value) =>
+{
+    const digits = String(value ?? '').replace(/\D/g, '');
+    return digits.length > 11 && digits.startsWith('55') ? digits.slice(2) : digits;
+};
+const CLIENT_NOT_FOUND = { error: 'Nenhum agendamento encontrado para este email e telefone' };
+
 router.get('/client/:email', async (req, res) => 
 {
     try 
     {
         const { email } = req.params;
+        const phone = onlyDigits(req.query.phone);
 
         if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
+        if (!phone) return res.status(400).json({ error: 'Telefone é obrigatório' });
 
         const [appointments] = await pool.query(`SELECT a.*, u.name as barberName, u.shop as barberShop, s.name as serviceName FROM appointments a
             JOIN users u ON a.barberId = u.id JOIN services s ON a.serviceId = s.id WHERE a.clientEmail = ? ORDER BY a.appointmentDate DESC, a.startTime DESC`,
                 [email.toLowerCase().trim()]);
 
-        res.json(appointments);
+        // Email e telefone precisam bater; sem correspondência a resposta é a mesma (não revela se o email existe)
+        const owned = appointments.filter(apt => onlyDigits(apt.clientPhone) === phone);
+        if (owned.length === 0) return res.status(404).json(CLIENT_NOT_FOUND);
+
+        res.json(owned);
 
     } 
     catch (error) 
@@ -32,7 +46,7 @@ router.get('/client/:email', async (req, res) =>
     }
 });
 
-router.post('/', async (req, res) => 
+router.post('/', requireBookingAvailable(req => req.body?.barberId ?? null), async (req, res) => 
 {
     const connection = await pool.getConnection();
 
@@ -135,11 +149,11 @@ router.delete('/client/:id', async (req, res) =>
     try 
     {
         const { id } = req.params;
-        const { email, reason } = req.body;
-        if (!email) return res.status(400).json({ error: 'Email é obrigatório para cancelar' });
+        const { email, phone, reason } = req.body;
+        if (!email || !onlyDigits(phone)) return res.status(400).json({ error: 'Email e telefone são obrigatórios para cancelar' });
 
-        const [appointments] = await pool.query('SELECT * FROM appointments WHERE id = ? AND clientEmail = ?', [id, email.toLowerCase().trim()]);
-        if (appointments.length === 0) return res.status(404).json({ error: 'Agendamento não encontrado' });
+        const [appointments] = await pool.query('SELECT * FROM appointments WHERE id = ? AND clientEmail = ?', [id, String(email).toLowerCase().trim()]);
+        if (appointments.length === 0 || onlyDigits(appointments[0].clientPhone) !== onlyDigits(phone)) return res.status(404).json(CLIENT_NOT_FOUND);
 
         const appointment = appointments[0];
         if (appointment.status === 'COMPLETED') return res.status(400).json({ error: 'Não é possível cancelar um agendamento já concluído' });

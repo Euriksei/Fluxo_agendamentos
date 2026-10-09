@@ -3,14 +3,14 @@ import express from 'express';
 import pool from '../config/database.js';
 
 import { authenticateToken } from '../middlewares/authentication.js';
-import { checkSubscription, requireFeature, requireCanAddEmployee } from '../middlewares/subscription.js';
+import { checkSubscription, requireFeature, requireCanAddEmployee, requireBookingAvailable } from '../middlewares/subscription.js';
 
 import { validateEmail } from '../utils/validations.js';
 import { normalizeTime, DEFAULT_SLOT_DURATION, isValidSlotDuration } from '../utils/time.js';
 
 const router = express.Router();
 
-router.get('/barber/:barberId', async (req, res) => 
+router.get('/barber/:barberId', requireBookingAvailable(req => req.params.barberId), async (req, res) => 
 {
     try 
     {
@@ -46,7 +46,6 @@ router.get('/', async (req, res) =>
     try 
     {
         const [users] = await pool.query('SELECT id, name, email, role, created_at FROM users WHERE userId = ? ORDER BY name ASC', [req.user.id]);
-        if (users.length === 0) return res.json({ error: 'Nenhum funcionário encontrado' });
         res.json(users);
     } 
     catch (error) 

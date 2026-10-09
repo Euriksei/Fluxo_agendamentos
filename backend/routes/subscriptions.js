@@ -2,6 +2,8 @@ import express from 'express';
 import pool from '../config/database.js';
 
 import { authenticateToken } from '../middlewares/authentication.js';
+import { resolveSubscription } from '../middlewares/subscription.js';
+import { getPlans } from '../utils/plans.js';
 
 import { getOwnerId } from '../utils/user.js';
 import { centavosParaReais } from '../utils/currency.js';
@@ -12,6 +14,17 @@ import asaasService from '../services/asaas.js';
 const router = express.Router();
 
 const TRIAL_DAYS = 7;
+
+// Upgrade pendente (PUT /me): aplica o plano novo só quando um pagamento confirmado cobre o valor dele
+async function applyPendingPlan(connection, sub, paidValue) 
+{
+    if (!sub.pendingPlanId) return;
+
+    const [plans] = await connection.query('SELECT price FROM plans WHERE id = ?', [sub.pendingPlanId]);
+    if (plans.length === 0 || Number(paidValue) < centavosParaReais(plans[0].price)) return;
+
+    await connection.query('UPDATE subscriptions SET planId = pendingPlanId, pendingPlanId = NULL WHERE id = ? AND pendingPlanId = ?', [sub.id, sub.pendingPlanId]);
+}
 
 const ASAAS_WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN;
 router.post('/webhook', async (req, res) => 
@@ -51,6 +64,7 @@ router.post('/webhook', async (req, res) =>
                             nextPayment.setMonth(nextPayment.getMonth() + 1);
                             const fNextPayment = nextPayment.toISOString().split('T')[0];
                             await connection.query(`UPDATE subscriptions SET status = 'ACTIVE', lastPaymentAt = NOW(), nextPaymentAt = ? WHERE id = ?`, [fNextPayment, sub.id]);
+                            await applyPendingPlan(connection, sub, payment.value);
                             break;
 
                         case 'PAYMENT_OVERDUE':
@@ -118,8 +132,9 @@ router.get('/me', async (req, res) =>
         const userId = req.user.id;
         const ownerId = await getOwnerId(userId);
 
-        const [subscriptions] = await pool.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features FROM subscriptions s 
-            JOIN plans p ON s.planId = p.id WHERE s.userId = ?`, [ownerId]);
+        const [subscriptions] = await pool.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features, 
+            pp.name as pendingPlanName, pp.slug as pendingPlanSlug, pp.price as pendingPlanPrice FROM subscriptions s 
+            JOIN plans p ON s.planId = p.id LEFT JOIN plans pp ON s.pendingPlanId = pp.id WHERE s.userId = ?`, [ownerId]);
 
         if (subscriptions.length === 0) 
         {
@@ -130,6 +145,8 @@ router.get('/me', async (req, res) =>
             return res.json({
                 status: 'NONE',
                 plan: basicPlan[0] ? { ...basicPlan[0], features: features } : null,
+                contractedPlan: null,
+                pendingPlan: null,
                 isLimited: true
             });
         }
@@ -138,17 +155,18 @@ router.get('/me', async (req, res) =>
 
         const features = typeof sub.features === 'string' ? JSON.parse(sub.features) : (sub.features || []);
 
+        // plan = o que vale agora (mesma regra do checkSubscription: OVERDUE/SUSPENDED/CANCELLED/PENDING/trial expirado caem no free);
+        // contractedPlan = o plano assinado, para a tela de Assinatura
+        const effective = await resolveSubscription(ownerId);
+        const freePlan = (await getPlans()).free;
+        const contractedPlan = { id: sub.planId, name: sub.planName, slug: sub.planSlug, price: sub.planPrice, maxEmployees: sub.maxEmployees, features };
+
         res.json({
             ...sub,
-            plan: {
-                id: sub.planId,
-                name: sub.planName,
-                slug: sub.planSlug,
-                price: sub.planPrice,
-                maxEmployees: sub.maxEmployees,
-                features: features
-            },
-            isLimited: sub.status !== 'ACTIVE' && sub.status !== 'TRIAL'
+            plan: { ...contractedPlan, features: effective.plan.features, maxEmployees: effective.isLimited ? (freePlan?.maxEmployees ?? 0) : sub.maxEmployees },
+            contractedPlan,
+            pendingPlan: sub.pendingPlanId ? { id: sub.pendingPlanId, name: sub.pendingPlanName, slug: sub.pendingPlanSlug, price: sub.pendingPlanPrice } : null,
+            isLimited: effective.isLimited
         });
     } 
     catch (error) 
@@ -538,10 +556,11 @@ router.put('/me', async (req, res) =>
         const userId = req.user.id;
         const ownerId = await getOwnerId(userId);
 
-        const { planId, updatePendingPayments } = req.body;
+        const { planId } = req.body;
         if (!planId) return res.status(400).json({ error: 'Plano é obrigatório' });
 
-        const [subscriptions] = await connection.query('SELECT * FROM subscriptions WHERE userId = ? AND status IN ("ACTIVE", "TRIAL", "PENDING")', [ownerId]);
+        const [subscriptions] = await connection.query(`SELECT s.*, p.price as currentPrice FROM subscriptions s JOIN plans p ON s.planId = p.id 
+            WHERE s.userId = ? AND s.status IN ("ACTIVE", "TRIAL", "PENDING") FOR UPDATE`, [ownerId]);
         if (subscriptions.length === 0) return res.status(404).json({ error: 'Nenhuma assinatura ativa encontrada' });
 
         const subscription = subscriptions[0];
@@ -550,28 +569,82 @@ router.put('/me', async (req, res) =>
         if (plans.length === 0) return res.status(404).json({ error: 'Plano não encontrado' });
 
         const newPlan = plans[0];
+        const features = typeof newPlan.features === 'string' ? JSON.parse(newPlan.features) : (newPlan.features || []);
+        const planResponse = { id: newPlan.id, name: newPlan.name, slug: newPlan.slug, price: newPlan.price, features };
 
-        if (subscription.asaasSubscriptionId) 
+        const updateAsaasValue = async (plan, updatePendingPayments) => 
         {
+            if (!subscription.asaasSubscriptionId) return;
             await asaasService.updateSubscription(subscription.asaasSubscriptionId, {
-                value: centavosParaReais(newPlan.price),
-                description: `Assinatura ${newPlan.name}`,
-                externalReference: `plan_${planId}_user_${ownerId}`,
-                updatePendingPayments: updatePendingPayments || false
+                value: centavosParaReais(plan.price),
+                description: `Assinatura ${plan.name}`,
+                externalReference: `plan_${plan.id}_user_${ownerId}`,
+                updatePendingPayments
+            });
+        };
+
+        if (newPlan.id === subscription.planId) 
+        {
+            if (!subscription.pendingPlanId) return res.status(400).json({ error: 'Você já está neste plano' });
+
+            // Desiste do upgrade pendente: volta a cobrança para o valor do plano atual
+            await updateAsaasValue(newPlan, true);
+            await connection.query('UPDATE subscriptions SET pendingPlanId = NULL WHERE id = ?', [subscription.id]);
+            await connection.commit();
+
+            return res.json({ id: subscription.id, status: subscription.status, plan: planResponse, pendingPlan: null });
+        }
+
+        const isUpgrade = newPlan.price > subscription.currentPrice;
+
+        // Upgrade com cobrança no Asaas: o plano só muda quando o pagamento no valor novo for confirmado (webhook ou /me/sync).
+        // Em TRIAL ainda não há cobrança: a troca vale na hora e o valor do plano novo é cobrado no convert-trial.
+        if (isUpgrade && subscription.asaasSubscriptionId) 
+        {
+            await updateAsaasValue(newPlan, true);
+            await connection.query('UPDATE subscriptions SET pendingPlanId = ? WHERE id = ?', [newPlan.id, subscription.id]);
+            await connection.commit();
+
+            // Cobrança pendente (já no valor novo) para o front levar o usuário ao pagamento; opcional se o Asaas falhar
+            let payment;
+            try 
+            {
+                const payments = await asaasService.listSubscriptionPayments(subscription.asaasSubscriptionId, { status: 'PENDING', limit: 1 });
+                const pending = payments?.data?.[0];
+                if (pending) payment = { id: pending.id, status: pending.status, billingType: pending.billingType, invoiceUrl: pending.invoiceUrl };
+            } 
+            catch (err) 
+            {
+                console.error('List pending payment error:', err.message);
+            }
+
+            return res.status(202).json({
+                id: subscription.id,
+                status: subscription.status,
+                pendingPlan: { id: newPlan.id, name: newPlan.name, slug: newPlan.slug, price: newPlan.price },
+                message: 'O novo plano será ativado assim que o pagamento for confirmado',
+                ...(payment && { payment })
             });
         }
 
-        await connection.query('UPDATE subscriptions SET planId = ? WHERE id = ?', [planId, subscription.id]);
+        if (!isUpgrade) 
+        {
+            const [employees] = await connection.query('SELECT COUNT(*) as count FROM users WHERE userId = ?', [ownerId]);
+            const current = Number(employees[0].count);
+            const max = newPlan.maxEmployees || 0;
+
+            if (current > max) 
+            {
+                return res.status(409).json({ error: `Remova funcionários antes de mudar de plano (${current}/${max} permitidos)`, code: 'EMPLOYEE_LIMIT', current, max });
+            }
+        }
+
+        await updateAsaasValue(newPlan, Boolean(req.body.updatePendingPayments));
+        await connection.query('UPDATE subscriptions SET planId = ?, pendingPlanId = NULL WHERE id = ?', [newPlan.id, subscription.id]);
 
         await connection.commit();
 
-        const features = typeof newPlan.features === 'string' ? JSON.parse(newPlan.features) : (newPlan.features || []);
-
-        res.json({
-            id: subscription.id,
-            status: subscription.status,
-            plan: { id: newPlan.id, name: newPlan.name, slug: newPlan.slug, price: newPlan.price, features: features }
-        });
+        res.json({ id: subscription.id, status: subscription.status, plan: planResponse, pendingPlan: null });
     } 
     catch (error) 
     {
@@ -757,6 +830,7 @@ router.post('/me/sync', async (req, res) =>
         let newStatus = localSub.status;
         let lastPaymentAt = localSub.lastPaymentAt;
         let nextPaymentAt = localSub.nextPaymentAt;
+        let lastConfirmedValue = null;
 
         if (asaasSub.deleted || asaasSub.status === 'INACTIVE') 
         {
@@ -775,6 +849,7 @@ router.post('/me/sync', async (req, res) =>
                 const lastConfirmed = confirmedPayments[0];
                 
                 newStatus = 'ACTIVE';
+                lastConfirmedValue = lastConfirmed.value;
                 
                 lastPaymentAt = lastConfirmed.paymentDate || lastConfirmed.confirmedDate || new Date().toISOString().split('T')[0];
 
@@ -833,6 +908,8 @@ router.post('/me/sync', async (req, res) =>
             await connection.query(`UPDATE subscriptions SET status = ?, lastPaymentAt = ?, nextPaymentAt = ?, updatedAt = NOW() WHERE id = ?`,
                 [newStatus, lastPaymentAt, nextPaymentAt, localSub.id]);
         }
+
+        if (newStatus === 'ACTIVE' && lastConfirmedValue !== null) await applyPendingPlan(connection, localSub, lastConfirmedValue);
 
         await connection.commit();
 

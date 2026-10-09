@@ -9,6 +9,7 @@ import { authenticateToken, requireAdmin } from '../middlewares/authentication.j
 import { validateEmail } from '../utils/validations.js';
 import { getOwnerId, generateSlug } from '../utils/user.js';
 import { getPlans } from '../utils/plans.js';
+import { ownerHasFeature } from '../middlewares/subscription.js';
 
 const router = express.Router();
 
@@ -66,9 +67,12 @@ router.get('/barber/:slug/data', async (req, res) =>
     try 
     {
         const { slug } = req.params;
-        const [users] = await pool.query('SELECT name, shop FROM users WHERE slug = ?', [slug]);
+        const [users] = await pool.query('SELECT id, name, shop FROM users WHERE slug = ?', [slug]);
         if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
-        res.json(users[0]);
+
+        // Dados básicos sempre públicos; bookingAvailable avisa a página quando o plano do dono não permite agendamento online
+        const bookingAvailable = (await ownerHasFeature(users[0].id, 'appointments')) === true;
+        res.json({ name: users[0].name, shop: users[0].shop, bookingAvailable });
     } 
     catch (error) 
     {
@@ -81,12 +85,11 @@ router.post('/register', async (req, res) =>
 {
     try 
     {
-        const { name, shop, email, password, confPassword, role = 'BARBER' } = req.body;
+        // O cadastro público sempre cria o dono da barbearia; o role do body é ignorado (funcionários são criados pelo dono)
+        const { name, shop, email, password, confPassword } = req.body;
+        const safeRole = 'BARBER';
 
         if (!name || !shop || !email || !password || !confPassword) return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-
-        if (role === 'ADMIN' || (role !== 'BARBER' && role !== 'EMPLOYEE')) return res.status(400).json({ error: 'Perfil inválido' });
-        const safeRole = role === 'BARBER' || role === 'EMPLOYEE' ? role : 'BARBER';
 
         if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
 

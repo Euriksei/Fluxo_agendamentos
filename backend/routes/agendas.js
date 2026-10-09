@@ -2,7 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 
 import { authenticateToken } from '../middlewares/authentication.js';
-import { checkSubscription, requireFeature } from '../middlewares/subscription.js';
+import { checkSubscription, requireFeature, requireBookingAvailable } from '../middlewares/subscription.js';
 
 import { getOwnerId } from '../utils/user.js';
 import { normalizeTime, timeToMinutes, minutesToTime, isTimeOverlap, isInLunchTime, DEFAULT_SLOT_DURATION, isValidSlotDuration } from '../utils/time.js';
@@ -10,7 +10,7 @@ import { toLocalDateString } from '../utils/date.js';
 
 const router = express.Router();
 
-router.get('/barber/:id', async (req, res) => 
+router.get('/barber/:id', requireBookingAvailable(req => req.params.id), async (req, res) => 
 {
     try 
     {
@@ -26,7 +26,7 @@ router.get('/barber/:id', async (req, res) =>
     }
 });
 
-router.get('/barber/blocks/:id', async (req, res) => 
+router.get('/barber/blocks/:id', requireBookingAvailable(req => req.params.id), async (req, res) => 
 {
     try 
     {
@@ -41,7 +41,7 @@ router.get('/barber/blocks/:id', async (req, res) =>
     }
 });
 
-router.get('/slots/:userId/:date', async (req, res) => 
+router.get('/slots/:userId/:date', requireBookingAvailable(req => req.params.userId), async (req, res) => 
 {
     try 
     {

@@ -24,6 +24,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Em dev o Vite (localhost) faz proxy de /api com X-Forwarded-For: confiar só no loopback para req.ip ser o IP real do cliente
+app.set('trust proxy', 'loopback');
+
 app.use(helmet());
 
 app.use(cors({
@@ -35,11 +38,12 @@ app.use(cors({
 
 const limiter = rateLimit({ windowMs: 30 * 60 * 1000, max: 1000, message: { error: 'Muitas requisições. Tente novamente mais tarde.' }, standardHeaders: true, legacyHeaders: false });
 
-//app.use(limiter);
+app.use('/api', limiter);
 
-const loginLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 5, message: { error: 'Muitas tentativas de login. Aguarde 10 minutos.' }, skipSuccessfulRequests: true });
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Muitas tentativas de login. Aguarde 15 minutos.' }, standardHeaders: true, legacyHeaders: false,
+    skipSuccessfulRequests: true });
 
-//app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/login', loginLimiter);
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
