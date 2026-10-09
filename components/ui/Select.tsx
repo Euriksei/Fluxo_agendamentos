@@ -9,7 +9,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement>
 
 const Select: React.FC<SelectProps> = ({ variant = 'primary', fullWidth = false, children, className = '', ...props }) => 
 {
-    const baseStyles = `px-4 py-3 rounded-lg font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue 
+    const baseStyles = `min-w-0 min-h-12 px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue 
         ring-offset-brand-black disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`;
 
     const variants = 

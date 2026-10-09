@@ -20,6 +20,18 @@ export const DIAS_SEMANA =
 
 export const DIAS_SEMANA_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+// 0 = "Sem intervalo": the next slot starts when the service ends (step = service duration).
+export const INTERVALO_OPCOES =
+[
+    { value: 0, label: 'Sem intervalo' },
+    { value: 15, label: '15 minutos' },
+    { value: 30, label: '30 minutos' },
+    { value: 45, label: '45 minutos' },
+    { value: 60, label: '1 hora' },
+    { value: 90, label: '1h 30min' },
+    { value: 120, label: '2 horas' },
+];
+
 export const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 export const STATUS_CONFIG = 

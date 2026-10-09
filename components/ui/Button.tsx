@@ -10,7 +10,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
 
 const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md', fullWidth = false, children, className = '', ...props }) => 
 {
-    const baseStyles = `rounded-lg font-semibold transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-2 
+    // min-h-11: every button is a >=44px touch target; inline-flex centers icon + label
+    const baseStyles = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-2 
         focus:ring-offset-2 focus:ring-brand-blue ring-offset-brand-black cursor-pointer`;
     
     const variants = 

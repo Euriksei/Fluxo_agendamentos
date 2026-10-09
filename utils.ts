@@ -28,6 +28,8 @@ export const formatDateLocal = (date) =>
 // Today's date (YYYY-MM-DD) in the user's local timezone; toISOString() would use UTC and roll over early in the evening.
 export const hojeLocal = () => formatDateLocal(new Date());
 
+export const formatarIntervalo = (minutos) => (Number(minutos) === 0 ? 'Sem intervalo' : `${minutos} min`);
+
 export const formatarHora = (time) => 
 {
     if (!time) return '-';
