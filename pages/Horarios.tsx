@@ -6,6 +6,7 @@ import { Edit, Trash2, Calendar, Clock, Lock, Unlock } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import TimeField from '@/components/ui/TimeField';
 import ResponsiveModal from '@/components/ui/ResponsiveModal';
 
 import { DIAS_SEMANA, INTERVALO_OPCOES } from '@/types';
@@ -429,13 +430,13 @@ export default function Horarios()
                     <div className="grid grid-cols-2 gap-3">
                         <div className="min-w-0">
                             <label htmlFor="agenda-inicio" className="block text-sm text-brand-gray mb-1">Início do Expediente</label>
-                            <Input id="agenda-inicio" type="time" value={formAgenda.startTime} fullWidth required className={CAMPO}
-                                onChange={e => setFormAgenda(f => ({ ...f, startTime: e.target.value }))} />
+                            <TimeField id="agenda-inicio" label="Início do Expediente" value={formAgenda.startTime} required
+                                    onChange={v => setFormAgenda(f => ({ ...f, startTime: v }))} />
                         </div>
                         <div className="min-w-0">
                             <label htmlFor="agenda-fim" className="block text-sm text-brand-gray mb-1">Fim do Expediente</label>
-                            <Input id="agenda-fim" type="time" value={formAgenda.endTime} fullWidth required className={CAMPO}
-                                onChange={e => setFormAgenda(f => ({ ...f, endTime: e.target.value }))} />
+                            <TimeField id="agenda-fim" label="Fim do Expediente" value={formAgenda.endTime} required
+                                    onChange={v => setFormAgenda(f => ({ ...f, endTime: v }))} />
                         </div>
                     </div>
 
@@ -449,13 +450,13 @@ export default function Horarios()
                         <div className="grid grid-cols-2 gap-3">
                             <div className="min-w-0">
                                 <label htmlFor="agenda-almoco-inicio" className="block text-sm text-brand-gray mb-1">Início do Almoço</label>
-                                <Input id="agenda-almoco-inicio" type="time" value={formAgenda.lunchStart} fullWidth required className={CAMPO}
-                                    onChange={e => setFormAgenda(f => ({ ...f, lunchStart: e.target.value }))} />
+                                <TimeField id="agenda-almoco-inicio" label="Início do Almoço" value={formAgenda.lunchStart} required
+                                    onChange={v => setFormAgenda(f => ({ ...f, lunchStart: v }))} />
                             </div>
                             <div className="min-w-0">
                                 <label htmlFor="agenda-almoco-fim" className="block text-sm text-brand-gray mb-1">Fim do Almoço</label>
-                                <Input id="agenda-almoco-fim" type="time" value={formAgenda.lunchEnd} fullWidth required className={CAMPO}
-                                    onChange={e => setFormAgenda(f => ({ ...f, lunchEnd: e.target.value }))} />
+                                <TimeField id="agenda-almoco-fim" label="Fim do Almoço" value={formAgenda.lunchEnd} required
+                                    onChange={v => setFormAgenda(f => ({ ...f, lunchEnd: v }))} />
                             </div>
                         </div>
                     )}
@@ -516,13 +517,13 @@ export default function Horarios()
                         <div className="grid grid-cols-2 gap-3">
                             <div className="min-w-0">
                                 <label htmlFor="bloqueio-hora-inicio" className="block text-sm text-brand-gray mb-1">Início</label>
-                                <Input id="bloqueio-hora-inicio" type="time" value={formBloqueio.startTime} fullWidth required className={CAMPO}
-                                    onChange={e => setFormBloqueio(f => ({ ...f, startTime: e.target.value }))} />
+                                <TimeField id="bloqueio-hora-inicio" label="Início do bloqueio" value={formBloqueio.startTime} required
+                                    onChange={v => setFormBloqueio(f => ({ ...f, startTime: v }))} />
                             </div>
                             <div className="min-w-0">
                                 <label htmlFor="bloqueio-hora-fim" className="block text-sm text-brand-gray mb-1">Fim</label>
-                                <Input id="bloqueio-hora-fim" type="time" value={formBloqueio.endTime} fullWidth required className={CAMPO}
-                                    onChange={e => setFormBloqueio(f => ({ ...f, endTime: e.target.value }))} />
+                                <TimeField id="bloqueio-hora-fim" label="Fim do bloqueio" value={formBloqueio.endTime} required
+                                    onChange={v => setFormBloqueio(f => ({ ...f, endTime: v }))} />
                             </div>
                         </div>
                     )}

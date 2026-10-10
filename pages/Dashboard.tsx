@@ -184,7 +184,7 @@ export default function Dashboard()
                 </p>
             </div>
 
-            {/* Plan and price are owner information */}
+            {/* Plan is owner information; the monthly price is not shown on the dashboard (only in Assinatura) */}
             {!isEmployee && (
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-brand-dark p-6 rounded-xl">
                 <div className="flex items-center gap-4">
@@ -201,14 +201,6 @@ export default function Dashboard()
                     </div>
                 </div>
 
-                {subscription?.plan?.price > 0 && (
-                    <div className="flex flex-row items-center justify-center gap-6">
-                        <p className="text-brand-gray text-sm">Valor mensal</p>
-                        <p className="text-brand-blue text-2xl font-bold">
-                            {formatarMoeda(subscription.plan.price)}
-                        </p>
-                    </div>
-                )}
             </div>
             )}
 

@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import ResponsiveModal from '@/components/ui/ResponsiveModal';
+import TimeField from '@/components/ui/TimeField';
 
 import { DIAS_SEMANA, INTERVALO_OPCOES } from '@/types';
 import { formatarMoeda, formatarHora, formatarIntervalo } from '@/utils';
@@ -544,11 +545,13 @@ export default function Equipe()
                     <div className="grid grid-cols-2 gap-3">
                         <div className="min-w-0">
                             <label htmlFor="func-agenda-inicio" className="block text-sm text-brand-gray mb-1">Início</label>
-                            <Input id="func-agenda-inicio" type="time" value={formAgenda.startTime} onChange={e => setFormAgenda({ ...formAgenda, startTime: e.target.value })} fullWidth required className="min-h-12" />
+                            <TimeField id="func-agenda-inicio" label="Início" value={formAgenda.startTime} required
+                                    onChange={v => setFormAgenda({ ...formAgenda, startTime: v })} />
                         </div>
                         <div className="min-w-0">
                             <label htmlFor="func-agenda-fim" className="block text-sm text-brand-gray mb-1">Fim</label>
-                            <Input id="func-agenda-fim" type="time" value={formAgenda.endTime} onChange={e => setFormAgenda({ ...formAgenda, endTime: e.target.value })} fullWidth required className="min-h-12" />
+                            <TimeField id="func-agenda-fim" label="Fim" value={formAgenda.endTime} required
+                                    onChange={v => setFormAgenda({ ...formAgenda, endTime: v })} />
                         </div>
                     </div>
 
@@ -570,13 +573,13 @@ export default function Equipe()
                         <div className="grid grid-cols-2 gap-3">
                             <div className="min-w-0">
                                 <label htmlFor="func-almoco-inicio" className="block text-sm text-brand-gray mb-1">Início do Almoço</label>
-                                <Input id="func-almoco-inicio" type="time" value={formAgenda.lunchStart} fullWidth required={formAgenda.hasLunch} className="min-h-12"
-                                    onChange={e => setFormAgenda({ ...formAgenda, lunchStart: e.target.value })} />
+                                <TimeField id="func-almoco-inicio" label="Início do Almoço" value={formAgenda.lunchStart} required={formAgenda.hasLunch}
+                                    onChange={v => setFormAgenda({ ...formAgenda, lunchStart: v })} />
                             </div>
                             <div className="min-w-0">
                                 <label htmlFor="func-almoco-fim" className="block text-sm text-brand-gray mb-1">Fim do Almoço</label>
-                                <Input id="func-almoco-fim" type="time" value={formAgenda.lunchEnd} fullWidth required={formAgenda.hasLunch} className="min-h-12"
-                                    onChange={e => setFormAgenda({ ...formAgenda, lunchEnd: e.target.value })} />
+                                <TimeField id="func-almoco-fim" label="Fim do Almoço" value={formAgenda.lunchEnd} required={formAgenda.hasLunch}
+                                    onChange={v => setFormAgenda({ ...formAgenda, lunchEnd: v })} />
                             </div>
                         </div>
                     )}
