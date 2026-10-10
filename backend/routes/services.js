@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 
-import { authenticateToken } from '../middlewares/authentication.js';
+import { authenticateToken, requireOwner } from '../middlewares/authentication.js';
 import { checkSubscription, requireFeature, requireBookingAvailable } from '../middlewares/subscription.js';
 
 import { getOwnerId } from '../utils/user.js';
@@ -60,6 +60,7 @@ router.get('/:id/employees', requireBookingAvailable(serviceOwner), async (req, 
 // ROTAS PROTEGIDAS
 
 router.use(authenticateToken);
+router.use(requireOwner); // funcionário não usa Serviços/Caixa (decisão do produto); lançamentos SYSTEM são gravados direto pelo appointments
 router.use(checkSubscription);
 
 router.get('/', async (req, res) => 
