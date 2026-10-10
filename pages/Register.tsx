@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts';
 
 import Logo from '@/components/Logo';
 import ShapeWaves from '@/components/ui/ShapeWaves';
-import { Button } from '@/components/shadcn/button';
+import SpecularButton from '@/components/ui/SpecularButton';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/shadcn/card';
@@ -104,10 +104,24 @@ export default function Register()
                                 </p>
                             )}
 
-                            <Button type="submit" size="lg" disabled={loading} aria-busy={loading} className="w-full mt-2">
-                                {loading && <Loader2 className="animate-spin" aria-hidden="true" />}
-                                {loading ? 'Registrando...' : 'Registrar'}
-                            </Button>
+                            <SpecularButton
+                                type="submit"
+                                size="md"
+                                radius={12}
+                                tint="#7C3AED"
+                                tintOpacity={1}
+                                lineColor="#E9D5FF"
+                                baseColor="#5B21B6"
+                                autoAnimate
+                                disabled={loading}
+                                aria-busy={loading}
+                                className="w-full mt-2 min-h-12"
+                            >
+                                <span className="inline-flex items-center justify-center gap-2 text-sm font-semibold">
+                                    {loading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                                    {loading ? 'Registrando...' : 'Registrar'}
+                                </span>
+                            </SpecularButton>
                         </form>
                     </CardContent>
 

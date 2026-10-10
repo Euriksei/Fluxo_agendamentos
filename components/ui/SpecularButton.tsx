@@ -1,4 +1,4 @@
-import { useRef, useEffect, type CSSProperties, type MouseEventHandler, type ReactNode } from 'react';
+import { useRef, useEffect, type ButtonHTMLAttributes, type CSSProperties, type MouseEventHandler, type ReactNode } from 'react';
 import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
 import './SpecularButton.css';
 
@@ -66,7 +66,7 @@ void main() {
 }
 `;
 
-interface SpecularButtonProps
+interface SpecularButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'type' | 'disabled' | 'className'>
 {
   children?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
@@ -112,7 +112,8 @@ const SpecularButton = ({
   disabled = false,
   onClick,
   className = '',
-  type = 'button'
+  type = 'button',
+  ...rest
 }: SpecularButtonProps) => {
   const btnRef = useRef<HTMLButtonElement>(null);
   const fxRef = useRef<HTMLSpanElement>(null);
@@ -250,6 +251,7 @@ const SpecularButton = ({
 
   return (
     <button
+      {...rest}
       ref={btnRef}
       type={type}
       disabled={disabled}
