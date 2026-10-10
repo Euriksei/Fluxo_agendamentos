@@ -30,7 +30,7 @@ router.get('/me', authenticateToken, async (req, res) =>
         const ownerId = await getOwnerId(userId);
 
         const [subscriptions] = await pool.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features 
-            FROM subscriptions s JOIN plans p ON s.planId = p.id WHERE s.userId = ? `, [ownerId]);
+            FROM subscriptions s JOIN plans p ON s.planId = p.id WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1`, [ownerId]);
 
         if (subscriptions.length === 0) 
         {

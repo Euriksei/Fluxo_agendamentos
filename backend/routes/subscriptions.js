@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 
-import { authenticateToken } from '../middlewares/authentication.js';
+import { authenticateToken, requireOwner } from '../middlewares/authentication.js';
 import { resolveSubscription } from '../middlewares/subscription.js';
 import { getPlans } from '../utils/plans.js';
 
@@ -26,12 +26,38 @@ async function applyPendingPlan(connection, sub, paidValue)
     await connection.query('UPDATE subscriptions SET planId = pendingPlanId, pendingPlanId = NULL WHERE id = ? AND pendingPlanId = ?', [sub.id, sub.pendingPlanId]);
 }
 
+// Uma linha de assinatura por dono: re-assinatura (após CANCELLED/OVERDUE/PENDING...) reaproveita a linha existente em vez de criar outra.
+// Se a linha antiga tinha outra assinatura no Asaas ainda viva, ela é removida lá para não cobrar em dobro.
+async function saveSubscription(connection, ownerId, { planId, asaasSubscriptionId, asaasCustomerId, status, nextPaymentAt }) 
+{
+    const [existing] = await connection.query('SELECT id, status, asaasSubscriptionId FROM subscriptions WHERE userId = ? ORDER BY id DESC LIMIT 1 FOR UPDATE', [ownerId]);
+
+    if (existing.length === 0) 
+    {
+        const [result] = await connection.query(`INSERT INTO subscriptions (userId, planId, asaasSubscriptionId, asaasCustomerId, status, nextPaymentAt, createdAt) 
+            VALUES (?, ?, ?, ?, ?, ?, NOW())`, [ownerId, planId, asaasSubscriptionId, asaasCustomerId, status, nextPaymentAt]);
+        return result.insertId;
+    }
+
+    const old = existing[0];
+    await connection.query(`UPDATE subscriptions SET planId = ?, pendingPlanId = NULL, asaasSubscriptionId = ?, asaasCustomerId = ?, status = ?, nextPaymentAt = ?, 
+        trialEndsAt = NULL, cancelledAt = NULL WHERE id = ?`, [planId, asaasSubscriptionId, asaasCustomerId, status, nextPaymentAt, old.id]);
+
+    if (old.asaasSubscriptionId && old.asaasSubscriptionId !== asaasSubscriptionId && old.status !== 'CANCELLED') 
+    {
+        try { await asaasService.deleteSubscription(old.asaasSubscriptionId); } 
+        catch (err) { console.error('Delete old ASAAS subscription error:', err.message); }
+    }
+
+    return old.id;
+}
+
 const ASAAS_WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN;
 router.post('/webhook', async (req, res) => 
 {
     if (!ASAAS_WEBHOOK_TOKEN) return res.status(400).json({ error: 'Token do ASAAS não definido' });
     const receivedToken = req.headers['asaas-access-token'];
-    if (!receivedToken || receivedToken !== ASAAS_WEBHOOK_TOKEN) { console.log('Token recebido:', receivedToken); return res.status(401).json({ error: 'Token inválido' }); }
+    if (!receivedToken || receivedToken !== ASAAS_WEBHOOK_TOKEN) return res.status(401).json({ error: 'Token inválido' });
 
     const connection = await pool.getConnection();
 
@@ -49,7 +75,7 @@ router.post('/webhook', async (req, res) =>
             
             if (asaasSubscriptionId) 
             {
-                const [subs] = await connection.query('SELECT * FROM subscriptions WHERE asaasSubscriptionId = ?', [asaasSubscriptionId]);
+                const [subs] = await connection.query('SELECT * FROM subscriptions WHERE asaasSubscriptionId = ? ORDER BY id DESC LIMIT 1', [asaasSubscriptionId]);
                 
                 if (subs.length > 0) 
                 {
@@ -68,6 +94,7 @@ router.post('/webhook', async (req, res) =>
                             break;
 
                         case 'PAYMENT_OVERDUE':
+                        case 'PAYMENT_CREDIT_CARD_CAPTURE_REFUSED': // cartão recusado na cobrança: mesmo efeito do atraso (cai para o free)
                             await connection.query('UPDATE subscriptions SET status = "OVERDUE" WHERE id = ?', [sub.id]);
                             break;
 
@@ -87,7 +114,7 @@ router.post('/webhook', async (req, res) =>
 
         if (subscription) 
         {
-            const [subs] = await connection.query('SELECT * FROM subscriptions WHERE asaasSubscriptionId = ?', [subscription.id]);
+            const [subs] = await connection.query('SELECT * FROM subscriptions WHERE asaasSubscriptionId = ? ORDER BY id DESC LIMIT 1', [subscription.id]);
             
             if (subs.length > 0) 
             {
@@ -134,7 +161,7 @@ router.get('/me', async (req, res) =>
 
         const [subscriptions] = await pool.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features, 
             pp.name as pendingPlanName, pp.slug as pendingPlanSlug, pp.price as pendingPlanPrice FROM subscriptions s 
-            JOIN plans p ON s.planId = p.id LEFT JOIN plans pp ON s.pendingPlanId = pp.id WHERE s.userId = ?`, [ownerId]);
+            JOIN plans p ON s.planId = p.id LEFT JOIN plans pp ON s.pendingPlanId = pp.id WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1`, [ownerId]);
 
         if (subscriptions.length === 0) 
         {
@@ -176,7 +203,7 @@ router.get('/me', async (req, res) =>
     }
 });
 
-router.post('/', async (req, res) => 
+router.post('/', requireOwner, async (req, res) => 
 {
     const connection = await pool.getConnection();
 
@@ -230,8 +257,8 @@ router.post('/', async (req, res) =>
             externalReference: `plan_${planId}_user_${ownerId}`
         });
 
-        const [result] = await connection.query(`INSERT INTO subscriptions (userId, planId, asaasSubscriptionId, asaasCustomerId, status, nextPaymentAt, createdAt) 
-            VALUES (?, ?, ?, ?, 'PENDING', ?, NOW())`, [ownerId, planId, asaasSubscription.id, asaasCustomer.id, formattedDueDate]);
+        const subscriptionId = await saveSubscription(connection, ownerId, { planId: plan.id, asaasSubscriptionId: asaasSubscription.id, asaasCustomerId: asaasCustomer.id,
+            status: 'PENDING', nextPaymentAt: formattedDueDate });
 
         await connection.commit();
 
@@ -254,7 +281,7 @@ router.post('/', async (req, res) =>
         }
 
         res.status(201).json({
-            id: result.insertId,
+            id: subscriptionId,
             asaasSubscriptionId: asaasSubscription.id,
             status: 'PENDING',
             plan: { id: plan.id, name: plan.name, slug: plan.slug, price: plan.price },
@@ -275,7 +302,7 @@ router.post('/', async (req, res) =>
     }
 });
 
-router.post('/credit-card', async (req, res) => 
+router.post('/credit-card', requireOwner, async (req, res) => 
 {
     const connection = await pool.getConnection();
 
@@ -336,13 +363,13 @@ router.post('/credit-card', async (req, res) =>
             creditCardHolderInfo
         );
 
-        const [result] = await connection.query(`INSERT INTO subscriptions (userId, planId, asaasSubscriptionId, asaasCustomerId, status, nextPaymentAt, createdAt) 
-            VALUES (?, ?, ?, ?, 'ACTIVE', ?, NOW())`, [ownerId, planId, asaasSubscription.id, asaasCustomer.id, formattedDueDate]);
+        const subscriptionId = await saveSubscription(connection, ownerId, { planId: plan.id, asaasSubscriptionId: asaasSubscription.id, asaasCustomerId: asaasCustomer.id,
+            status: 'ACTIVE', nextPaymentAt: formattedDueDate });
 
         await connection.commit();
 
         res.status(201).json({
-            id: result.insertId,
+            id: subscriptionId,
             asaasSubscriptionId: asaasSubscription.id,
             status: 'ACTIVE',
             plan: { id: plan.id, name: plan.name, slug: plan.slug, price: plan.price },
@@ -362,7 +389,7 @@ router.post('/credit-card', async (req, res) =>
     }
 });
 
-router.post('/trial', async (req, res) => 
+router.post('/trial', requireOwner, async (req, res) => 
 {
     const connection = await pool.getConnection();
 
@@ -421,7 +448,7 @@ router.post('/trial', async (req, res) =>
     }
 });
 
-router.post('/convert-trial', async (req, res) => 
+router.post('/convert-trial', requireOwner, async (req, res) => 
 {
     const connection = await pool.getConnection();
 
@@ -435,7 +462,7 @@ router.post('/convert-trial', async (req, res) =>
 
         if (!billingType) return res.status(400).json({ error: 'Tipo de cobrança é obrigatório' });
 
-        const [subscriptions] = await connection.query(`SELECT s.*, p.* FROM subscriptions s JOIN plans p ON s.planId = p.id WHERE s.userId = ? AND s.status = 'TRIAL'`, [ownerId]);
+        const [subscriptions] = await connection.query(`SELECT s.id, s.planId, p.name, p.price FROM subscriptions s JOIN plans p ON s.planId = p.id WHERE s.userId = ? AND s.status = 'TRIAL' ORDER BY s.id DESC LIMIT 1`, [ownerId]);
         if (subscriptions.length === 0) return res.status(404).json({ error: 'Nenhum período de teste ativo encontrado' });
         const subscription = subscriptions[0];
 
@@ -488,7 +515,7 @@ router.post('/convert-trial', async (req, res) =>
             asaasSubscription = await asaasService.createSubscription({
                 customer: asaasCustomer.id,
                 billingType: billingType,
-                value: plan.price,
+                value: centavosParaReais(plan.price),
                 nextDueDate: formattedDueDate,
                 cycle: 'MONTHLY',
                 description: `Assinatura ${plan.name}`,
@@ -545,7 +572,7 @@ router.post('/convert-trial', async (req, res) =>
     }
 });
 
-router.put('/me', async (req, res) => 
+router.put('/me', requireOwner, async (req, res) => 
 {
     const connection = await pool.getConnection();
 
@@ -560,7 +587,7 @@ router.put('/me', async (req, res) =>
         if (!planId) return res.status(400).json({ error: 'Plano é obrigatório' });
 
         const [subscriptions] = await connection.query(`SELECT s.*, p.price as currentPrice FROM subscriptions s JOIN plans p ON s.planId = p.id 
-            WHERE s.userId = ? AND s.status IN ("ACTIVE", "TRIAL", "PENDING") FOR UPDATE`, [ownerId]);
+            WHERE s.userId = ? AND s.status IN ("ACTIVE", "TRIAL", "PENDING") ORDER BY s.id DESC LIMIT 1 FOR UPDATE`, [ownerId]);
         if (subscriptions.length === 0) return res.status(404).json({ error: 'Nenhuma assinatura ativa encontrada' });
 
         const subscription = subscriptions[0];
@@ -659,7 +686,7 @@ router.put('/me', async (req, res) =>
     }
 });
 
-router.put('/me/credit-card', async (req, res) => 
+router.put('/me/credit-card', requireOwner, async (req, res) => 
 {
     try 
     {
@@ -669,7 +696,7 @@ router.put('/me/credit-card', async (req, res) =>
 
         if (!creditCard || !creditCardHolderInfo)  return res.status(400).json({ error: 'Dados do cartão e do titular são obrigatórios' });
 
-        const [subscriptions] = await pool.query('SELECT * FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL', [ownerId]);
+        const [subscriptions] = await pool.query('SELECT * FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL ORDER BY id DESC LIMIT 1', [ownerId]);
         if (subscriptions.length === 0) return res.status(404).json({ error: 'Nenhuma assinatura encontrada' });
         const subscription = subscriptions[0];
 
@@ -684,7 +711,7 @@ router.put('/me/credit-card', async (req, res) =>
     }
 });
 
-router.delete('/me', async (req, res) => 
+router.delete('/me', requireOwner, async (req, res) => 
 {
     const connection = await pool.getConnection();
 
@@ -695,7 +722,7 @@ router.delete('/me', async (req, res) =>
         const userId = req.user.id;
         const ownerId = await getOwnerId(userId);
 
-        const [subscriptions] = await connection.query('SELECT * FROM subscriptions WHERE userId = ? AND status IN ("ACTIVE", "TRIAL", "PENDING")', [ownerId]);
+        const [subscriptions] = await connection.query('SELECT * FROM subscriptions WHERE userId = ? AND status IN ("ACTIVE", "TRIAL", "PENDING") ORDER BY id DESC LIMIT 1', [ownerId]);
         if (subscriptions.length === 0) return res.status(404).json({ error: 'Nenhuma assinatura ativa encontrada' });
         const subscription = subscriptions[0];
 
@@ -720,7 +747,7 @@ router.delete('/me', async (req, res) =>
     }
 });
 
-router.get('/me/payments', async (req, res) => 
+router.get('/me/payments', requireOwner, async (req, res) => 
 {
     try 
     {
@@ -728,7 +755,7 @@ router.get('/me/payments', async (req, res) =>
         const ownerId = await getOwnerId(userId);
         const { status, offset, limit } = req.query;
 
-        const [subscriptions] = await pool.query('SELECT * FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL', [ownerId]);
+        const [subscriptions] = await pool.query('SELECT * FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL ORDER BY id DESC LIMIT 1', [ownerId]);
         if (subscriptions.length === 0) return res.json({ data: [], hasMore: false, totalCount: 0 });
         const subscription = subscriptions[0];
 
@@ -743,13 +770,17 @@ router.get('/me/payments', async (req, res) =>
     }
 });
 
-router.get('/payments/:paymentId', async (req, res) => 
+router.get('/payments/:paymentId', requireOwner, async (req, res) => 
 {
     try 
     {
         const { paymentId } = req.params;
+        const ownerId = await getOwnerId(req.user.id);
 
-        const payment = await asaasService.getPayment(paymentId);
+        // Só cobranças da assinatura do próprio dono (evita ler cobrança de outra barbearia pelo id)
+        const [subscriptions] = await pool.query('SELECT asaasSubscriptionId FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL', [ownerId]);
+        const payment = subscriptions.length > 0 ? await asaasService.getPayment(paymentId) : null;
+        if (!payment || !subscriptions.some(sub => sub.asaasSubscriptionId === payment.subscription)) return res.status(404).json({ error: 'Cobrança não encontrada' });
         
         let paymentInfo = { ...payment };
 
@@ -786,7 +817,7 @@ router.post('/me/sync', async (req, res) =>
         const ownerId = await getOwnerId(userId);
 
         const [subscriptions] = await connection.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features FROM subscriptions s 
-            JOIN plans p ON s.planId = p.id WHERE s.userId = ?`, [ownerId]);
+            JOIN plans p ON s.planId = p.id WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1`, [ownerId]);
 
         if (subscriptions.length === 0) 
         {
@@ -918,6 +949,7 @@ router.post('/me/sync', async (req, res) =>
 
         const sub = updatedSub[0];
         const features = typeof sub.features === 'string' ? JSON.parse(sub.features) : (sub.features || []);
+        const effective = await resolveSubscription(ownerId);
 
         res.json({
             synced: true,
@@ -938,7 +970,7 @@ router.post('/me/sync', async (req, res) =>
                 trialEndsAt: sub.trialEndsAt,
                 nextPaymentAt: sub.nextPaymentAt,
                 lastPaymentAt: sub.lastPaymentAt,
-                isLimited: sub.status !== 'ACTIVE' && sub.status !== 'TRIAL'
+                isLimited: effective.isLimited
             }
         });
     } 

@@ -139,7 +139,7 @@ router.get('/me', async (req, res) =>
 
         const [subscriptions] = await pool.query(`SELECT s.id, s.userId, s.planId, s.asaasSubscriptionId, s.asaasCustomerId, s.status, s.trialEndsAt, s.nextPaymentAt, 
             s.lastPaymentAt, s.cancelledAt, s.createdAt, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features FROM subscriptions s JOIN 
-                plans p ON s.planId = p.id WHERE s.userId = ?`, [ownerId]);
+                plans p ON s.planId = p.id WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1`, [ownerId]);
 
         const plans = await getPlans();
         let subscription = null;

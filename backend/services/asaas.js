@@ -14,12 +14,14 @@ class AsaasService
         try 
         {
             const response = await fetch(url, config);
-            const data = await response.json();
+            const data = await response.json().catch(() => ({})); // 404 do Asaas pode vir sem corpo
 
             if (!response.ok) 
             {
-                const error = new Error(data.errors?.[0]?.description || 'Erro na API ASAAS');
-                error.status = response.status;
+                // 401/403 do Asaas é problema da nossa chave: não repassar (o front trata 401 como sessão expirada e desloga)
+                const isAuthError = response.status === 401 || response.status === 403;
+                const error = new Error(isAuthError ? 'Serviço de pagamento indisponível no momento' : (data.errors?.[0]?.description || 'Erro na API ASAAS'));
+                error.status = isAuthError ? 502 : response.status;
                 error.data = data;
                 throw error;
             }
