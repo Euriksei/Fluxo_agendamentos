@@ -140,13 +140,15 @@ export default function Equipe()
 
             if (editandoId) 
             {
-                result = await updateEmployee(editandoId, formEmployee);
+                await updateEmployee(editandoId, formEmployee);
                 if (selectedEmployee && selectedEmployee.id === editandoId) setSelectedEmployee(prev => ({ ...prev, ...formEmployee }));
             } 
             else 
             {
-                result = await createEmployee(formEmployee);
+                await createEmployee(formEmployee);
             }
+
+            closeModal();
         } 
         catch (err) { console.error(err); } 
         finally { setLoading(false); }
@@ -197,7 +199,7 @@ export default function Equipe()
             closeModal();
         }
         catch (err) { console.error(err); }
-        finally { setLoadingAgendasDono(false); }
+        finally { setLoading(false); }
     };
 
     const handleSubmitServices = async (e) => 

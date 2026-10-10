@@ -33,8 +33,11 @@ export default function Horarios()
     // Create mode picks several days at once; edit mode keeps formAgenda.dayOfWeek (one day).
     const [selectedDays, setSelectedDays] = useState<number[]>([]);
     const [formError, setFormError] = useState<string | null>(null);
-    // MySQL returns isActive as 0/1: only active agendas block a day
-    const existingDays = new Set((agendas || []).filter(a => Boolean(a.isActive)).map(a => a.dayOfWeek));
+    // "Remover" is a soft delete (isActive = 0) and GET /agendas still returns those rows. Listing them showed a removed day as
+    // "Inativo" with an Editar button whose save never reactivated it, so only active agendas are shown and block a day.
+    // MySQL returns isActive as 0/1.
+    const activeAgendas = (agendas || []).filter(a => Boolean(a.isActive));
+    const existingDays = new Set(activeAgendas.map(a => a.dayOfWeek));
 
     const toggleDay = (day: number) => { setFormError(null); setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort()); };
     const applyShortcut = (days: number[]) => { setFormError(null); setSelectedDays(days.filter(d => !existingDays.has(d))); };
@@ -96,7 +99,7 @@ export default function Horarios()
             const base = { startTime: formAgenda.startTime, endTime: formAgenda.endTime, slotDuration: formAgenda.slotDuration,
                 lunchStart: formAgenda.hasLunch ? formAgenda.lunchStart : null, lunchEnd: formAgenda.hasLunch ? formAgenda.lunchEnd : null };
 
-            if (editandoId) await updateAgenda(editandoId, { ...base, dayOfWeek: formAgenda.dayOfWeek });
+            if (editandoId) await updateAgenda(editandoId, { ...base, dayOfWeek: formAgenda.dayOfWeek, isActive: true });
             else await createAgenda({ ...base, daysOfWeek: selectedDays }, { silent: true });
 
             closeModal();
@@ -155,6 +158,8 @@ export default function Horarios()
             try 
             {
                 await deleteAgenda(agendaId);
+                // Removed from inside the edit modal: the modal must not stay open editing a deleted day
+                if (agendaId === editandoId) closeModal();
             } 
             catch (err) 
             {
@@ -216,12 +221,12 @@ export default function Horarios()
 
             {tab === 'horarios' && (
                 <>
-                    {agendas && agendas.length > 0 
+                    {activeAgendas.length > 0 
                     ? 
                     (
                         <>
                         <ul className="md:hidden space-y-3">
-                            {agendas.map(agenda => (
+                            {activeAgendas.map(agenda => (
                                 <li key={agenda.id} className="bg-brand-dark rounded-lg border border-white/5 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
@@ -261,7 +266,7 @@ export default function Horarios()
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {agendas.map(agenda => (
+                                    {activeAgendas.map(agenda => (
                                         <tr key={agenda.id} className="text-white border-b border-white/5 hover:bg-white/5">
                                             <td className="p-4 text-sm font-medium">{getDayName(agenda.dayOfWeek)}</td>
                                             <td className="p-4 text-sm">
@@ -278,11 +283,11 @@ export default function Horarios()
                                                 </span>
                                             </td>
                                             <td className="p-4">
-                                                <div className="flex gap-4 items-center">                             
-                                                    <button onClick={() => openModalAgenda(agenda)} aria-label={`Editar ${getDayName(agenda.dayOfWeek)}`} className="text-brand-blue hover:text-brand-purple">
+                                                <div className="-m-3 flex items-center">
+                                                    <button type="button" onClick={() => openModalAgenda(agenda)} aria-label={`Editar ${getDayName(agenda.dayOfWeek)}`} className="inline-flex size-11 items-center justify-center rounded-lg text-brand-blue hover:bg-white/10 hover:text-brand-purple">
                                                         <Edit size={16} />
                                                     </button>
-                                                    <button onClick={() => handleDeleteAgenda(agenda.id)} aria-label={`Remover ${getDayName(agenda.dayOfWeek)}`} className="text-red-500 hover:text-red-400">
+                                                    <button type="button" onClick={() => handleDeleteAgenda(agenda.id)} aria-label={`Remover ${getDayName(agenda.dayOfWeek)}`} className="inline-flex size-11 items-center justify-center rounded-lg text-red-500 hover:bg-white/10 hover:text-red-400">
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </div>

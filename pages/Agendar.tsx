@@ -639,7 +639,8 @@ export default function Agendar()
                         <h2 className="text-xl font-semibold text-white mb-4">Seus Dados</h2>
                         <p className="text-brand-gray mb-6">Preencha seus dados para confirmar o agendamento</p>
                         
-                        <div className="space-y-4">
+                        {/* scroll-margin keeps the focused field above the sticky "Continuar" bar when the keyboard shrinks the viewport */}
+                        <div className="space-y-4 [&_input]:scroll-mb-28 [&_textarea]:scroll-mb-28">
                             <div>
                                 <label htmlFor="cliente-nome" className="block text-sm text-brand-gray mb-2">
                                     <User size={14} aria-hidden="true" className="inline mr-1" />
