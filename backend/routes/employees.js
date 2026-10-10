@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import pool from '../config/database.js';
 
-import { authenticateToken } from '../middlewares/authentication.js';
+import { authenticateToken, requireOwner } from '../middlewares/authentication.js';
 import { checkSubscription, requireFeature, requireCanAddEmployee, requireBookingAvailable } from '../middlewares/subscription.js';
 
 import { validateEmail } from '../utils/validations.js';
@@ -84,7 +84,7 @@ router.get('/:id', async (req, res) =>
 
 router.use(requireFeature('employees'));
 
-router.post('/', requireCanAddEmployee, async (req, res) => 
+router.post('/', requireOwner, requireCanAddEmployee, async (req, res) => 
 {
     try 
     {

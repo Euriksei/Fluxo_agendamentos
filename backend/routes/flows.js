@@ -69,8 +69,9 @@ router.delete('/:id', async (req, res) =>
     try 
     {
         const { id } = req.params;
+        const ownerId = await getOwnerId(req.user.id);
 
-        const [existing] = await pool.query('SELECT id FROM flows WHERE id = ?', [id]);
+        const [existing] = await pool.query('SELECT f.id FROM flows f JOIN users u ON f.userId = u.id WHERE f.id = ? AND (u.id = ? OR u.userId = ?)', [id, ownerId, ownerId]);
         if (existing.length === 0) return res.status(404).json({ error: 'Fluxo de caixa não encontrado' });
 
         await pool.query('DELETE FROM flows WHERE id = ?', [id]);
@@ -124,7 +125,9 @@ router.put('/:id', async (req, res) =>
         const { id } = req.params;
         const { serviceId = null, value, date, type = 'Outro', category = 'Sem Categoria' } = req.body;
 
-        const [existing] = await connection.query('SELECT id FROM flows WHERE id = ?', [id]);
+        const ownerId = await getOwnerId(req.user.id, connection);
+
+        const [existing] = await connection.query('SELECT f.id, f.category FROM flows f JOIN users u ON f.userId = u.id WHERE f.id = ? AND (u.id = ? OR u.userId = ?)', [id, ownerId, ownerId]);
         if (existing.length === 0) return res.status(404).json({ error: 'Fluxo de caixa não encontrado' });
         if (existing[0].category === 'SYSTEM') return res.status(403).json({ error: 'Lançamentos gerados automaticamente pelo sistema não podem ser editados' });
 
