@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ProtectedRoute, OwnerRoute } from '@/components/ProtectedRoute';
 
 import NotificationToast from '@/components/NotificationToast';
 
@@ -48,8 +48,8 @@ const App: React.FC = () =>
                     <Route path="/horarios" element={ <FeatureGate feature="agendas"><Horarios /></FeatureGate> } />
                     <Route path="/servicos" element={ <FeatureGate feature="services"><Serviços /></FeatureGate> } />
                     <Route path="/caixa" element={ <FeatureGate feature="flows"><Caixa /></FeatureGate> } />
-                    <Route path="/equipe" element={ <FeatureGate feature="employees"><Equipe /></FeatureGate> } />
-                    <Route path="/assinatura" element={ <Assinatura /> } />
+                    <Route path="/equipe" element={ <OwnerRoute><FeatureGate feature="employees"><Equipe /></FeatureGate></OwnerRoute> } />
+                    <Route path="/assinatura" element={ <OwnerRoute><Assinatura /></OwnerRoute> } />
                 </Route>
 
                 {/* Rotas admin */}

@@ -86,7 +86,7 @@ export function AuthProvider({ children })
         return data;
     }, [authRequest]);
 
-    const value = { user, loading, error, setError, isAuthenticated: !!user, isAdmin: user?.user.role === 'ADMIN', login, logout, register, updateProfile };
+    const value = { user, loading, error, setError, isAuthenticated: !!user, isAdmin: user?.user.role === 'ADMIN', isEmployee: user?.user.role === 'EMPLOYEE', login, logout, register, updateProfile };
 
     return (
         <AuthContext.Provider value={value}>

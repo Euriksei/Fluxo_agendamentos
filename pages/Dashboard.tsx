@@ -11,7 +11,7 @@ import { STATUS_CONFIG, SUBSCRIPTION_STATUS_CONFIG, PLAN_FEATURE_LABELS } from '
 
 export default function Dashboard() 
 {
-    const { user } = useAuth();
+    const { user, isEmployee } = useAuth();
     const { getBarberAppointments } = useAppointments();
     const { getFlows } = useFlows();
     const { subscription, subscriptionLoaded, hasFeature } = useSubscription();
@@ -344,7 +344,7 @@ export default function Dashboard()
                     (
                         <div className="text-center py-8">
                             <Calendar size={40} className="mx-auto text-brand-gray mb-3" />
-                            <p className="text-brand-gray">{temAgenda ? 'Nenhum agendamento para hoje' : <>{"Agenda não está no seu plano. "}<Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link></>}</p>
+                            <p className="text-brand-gray">{temAgenda ? 'Nenhum agendamento para hoje' : <>{"Agenda não está no seu plano. "}{isEmployee ? 'Fale com o dono da barbearia.' : <Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link>}</>}</p>
                         </div>
                     )}
                 </div>
@@ -396,7 +396,7 @@ export default function Dashboard()
                     (
                         <div className="text-center py-8">
                             <Clock size={40} className="mx-auto text-brand-gray mb-3" />
-                            <p className="text-brand-gray">{temAgenda ? 'Nenhum agendamento futuro' : <>{"Agenda não está no seu plano. "}<Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link></>}</p>
+                            <p className="text-brand-gray">{temAgenda ? 'Nenhum agendamento futuro' : <>{"Agenda não está no seu plano. "}{isEmployee ? 'Fale com o dono da barbearia.' : <Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link>}</>}</p>
                         </div>
                     )}
                 </div>
@@ -441,7 +441,7 @@ export default function Dashboard()
                     (
                         <div className="text-center py-8">
                             <DollarSign size={40} className="mx-auto text-brand-gray mb-3" />
-                            <p className="text-brand-gray">{temCaixa ? 'Nenhuma movimentação recente' : <>{"Fluxo de Caixa não está no seu plano. "}<Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link></>}</p>
+                            <p className="text-brand-gray">{temCaixa ? 'Nenhuma movimentação recente' : <>{"Fluxo de Caixa não está no seu plano. "}{isEmployee ? 'Fale com o dono da barbearia.' : <Link to="/assinatura" className="inline-flex min-h-11 items-center font-semibold text-brand-purple underline-offset-2 hover:underline">Ver planos</Link>}</>}</p>
                         </div>
                     )}
                 </div>
