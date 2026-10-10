@@ -3,11 +3,11 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { notifyInfo } from '../hooks/useApi';
 
-export const OWNER_ONLY_MESSAGE = 'Apenas o dono da barbearia pode acessar assinatura, cobranças e cadastro de funcionários.';
+export const OWNER_ONLY_MESSAGE = 'Apenas o dono da barbearia pode acessar assinatura, equipe, caixa e serviços.';
 
 let lastOwnerNotice = 0;
 
-// Owner-only pages (assinatura, equipe): an EMPLOYEE opening the URL directly goes back to the dashboard instead of
+// Owner-only pages (assinatura, equipe, caixa, serviços): an EMPLOYEE opening the URL directly goes back to the dashboard instead of
 // loading a page whose API calls answer 403 OWNER_ONLY.
 export function OwnerRoute({ children })
 {

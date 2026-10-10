@@ -17,7 +17,8 @@ export default function Dashboard()
     const { subscription, subscriptionLoaded, hasFeature } = useSubscription();
     // Plan without the feature: skip the request (it would 403) and show an upgrade hint in that card
     const temAgenda = !subscription || hasFeature('appointments');
-    const temCaixa = !subscription || hasFeature('flows');
+    // Employees never see cash data (backend answers 403 on /flows for EMPLOYEE): no request, no card
+    const temCaixa = !isEmployee && (!subscription || hasFeature('flows'));
 
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState(false);
@@ -183,6 +184,8 @@ export default function Dashboard()
                 </p>
             </div>
 
+            {/* Plan and price are owner information */}
+            {!isEmployee && (
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-brand-dark p-6 rounded-xl">
                 <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${statusConfig.color}`}>
@@ -207,6 +210,7 @@ export default function Dashboard()
                     </div>
                 )}
             </div>
+            )}
 
             <div className="bg-linear-to-br from-brand-purple/20 to-brand-blue/20 border border-brand-purple/30 rounded-xl p-6">
                 <div className="flex flex-col lg:flex-row justify-between gap-6">

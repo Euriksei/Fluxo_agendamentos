@@ -46,8 +46,8 @@ const App: React.FC = () =>
                     <Route path="/dashboard" element={ <Dashboard /> } />
                     <Route path="/agenda" element={ <FeatureGate feature="appointments"><Agenda /></FeatureGate> } />    
                     <Route path="/horarios" element={ <FeatureGate feature="agendas"><Horarios /></FeatureGate> } />
-                    <Route path="/servicos" element={ <FeatureGate feature="services"><Serviços /></FeatureGate> } />
-                    <Route path="/caixa" element={ <FeatureGate feature="flows"><Caixa /></FeatureGate> } />
+                    <Route path="/servicos" element={ <OwnerRoute><FeatureGate feature="services"><Serviços /></FeatureGate></OwnerRoute> } />
+                    <Route path="/caixa" element={ <OwnerRoute><FeatureGate feature="flows"><Caixa /></FeatureGate></OwnerRoute> } />
                     <Route path="/equipe" element={ <OwnerRoute><FeatureGate feature="employees"><Equipe /></FeatureGate></OwnerRoute> } />
                     <Route path="/assinatura" element={ <OwnerRoute><Assinatura /></OwnerRoute> } />
                 </Route>

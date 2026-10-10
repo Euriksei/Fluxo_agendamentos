@@ -43,7 +43,8 @@ function DataLoader({ children })
             {
                 const loads = [];
                 if (can('employees')) loads.push(getEmployees());
-                if (can('services')) loads.push(getServices());
+                // Services and cash flow are owner data: the API answers 403 OWNER_ONLY to an EMPLOYEE
+                if (role === 'BARBER' && can('services')) loads.push(getServices());
                 if (can('agendas')) loads.push(getAgendas(), getBlocks());
                 if (can('appointments')) loads.push(getBarberAppointments());
                 if (role === 'BARBER' && can('flows')) loads.push(getFlows());
