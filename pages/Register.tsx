@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Loader2, MailCheck } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
 import Logo from '@/components/Logo';
+import ReenviarConfirmacao from '@/components/ReenviarConfirmacao';
 import WavesBackground from '@/components/ui/WavesBackground';
 import SpecularButton from '@/components/ui/SpecularButton';
 import { Input } from '@/components/shadcn/input';
@@ -12,10 +13,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 export default function Register()
 {
-    const { login, register, setError } = useAuth();
-    const navigate = useNavigate();
+    const { register, setError } = useAuth();
 
     const [loading, setLoading] = useState(false);
+    // Set after a successful register: the account only signs in after confirming the email
+    const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
     const [form, setForm] = useState({ name: '', shop: '', email: '', password: '', confPassword: '', role: 'BARBER' });
 
@@ -38,10 +40,8 @@ export default function Register()
                 return;
             }
 
-            await register(form);
-
-            const user = await login(form.email, form.password);
-            if (user) navigate('/dashboard', { replace: true });
+            const created = await register(form);
+            setRegisteredEmail(created.email);
         }
         catch (err)
         {
@@ -61,6 +61,7 @@ export default function Register()
 
                 <Logo variant="full" textVariant="gradient" size="xl" className="flex-col gap-0 mb-6" />
 
+                {registeredEmail ? <ConfirmeSeuEmail email={registeredEmail} /> : (
                 <Card>
                     <CardHeader className="text-center">
                         <CardTitle>Criar Conta</CardTitle>
@@ -132,7 +133,39 @@ export default function Register()
                         </p>
                     </CardFooter>
                 </Card>
+                )}
             </div>
         </section>
+    );
+}
+
+function ConfirmeSeuEmail({ email }: { email: string })
+{
+    return (
+        <Card>
+            <CardHeader className="text-center">
+                <MailCheck className="mx-auto mb-2 size-10 text-brand-purple" aria-hidden="true" />
+                <CardTitle>Confirme seu email</CardTitle>
+                <CardDescription>Falta só um passo para acessar sua conta</CardDescription>
+            </CardHeader>
+
+            <CardContent className="flex flex-col gap-4 text-center">
+                <p role="status" className="text-sm text-white">
+                    Enviamos um link de confirmação para <strong className="break-all">{email}</strong>. Abra o email e clique em <strong>Confirmar email</strong>.
+                </p>
+                <p className="text-sm text-brand-gray">O link vale por 24 horas. Se não encontrar, confira a caixa de spam ou lixo eletrônico.</p>
+
+                <ReenviarConfirmacao email={email} startCoolingDown label="Reenviar email" />
+            </CardContent>
+
+            <CardFooter className="justify-center">
+                <p className="text-sm text-brand-gray">
+                    Já confirmou?{' '}
+                    <Link to="/login" className="inline-flex min-h-11 items-center px-1 gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60">
+                        Fazer login
+                    </Link>
+                </p>
+            </CardFooter>
+        </Card>
     );
 }

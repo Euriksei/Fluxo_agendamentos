@@ -92,6 +92,17 @@ JWT_SECRET=$(openssl rand -hex 32)
 ASAAS_API_URL=https://api-sandbox.asaas.com/v3
 ASAAS_API_KEY=
 ASAAS_WEBHOOK_TOKEN=$(openssl rand -hex 32)
+
+# Base dos links enviados por email (redefinição de senha)
+PUBLIC_URL=https://$DOMAIN
+
+# SMTP (Gmail: smtp.gmail.com, 465, SMTP_SECURE=true, SMTP_PASS = senha de app). Vazio = emails não saem (erro no log).
+SMTP_HOST=
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=
+SMTP_PASS=
+MAIL_FROM=
 EOF
     ENV_CREATED=1
 fi
@@ -126,6 +137,10 @@ else
 fi
 log "Aplicando migrations/002_subscription_pending_plan.sql (idempotente)"
 mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/002_subscription_pending_plan.sql"
+log "Aplicando migrations/003_password_resets.sql (idempotente)"
+mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/003_password_resets.sql"
+log "Aplicando migrations/004_email_verification.sql (idempotente; só a 1ª execução marca as contas existentes como confirmadas)"
+mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/004_email_verification.sql"
 
 PLANS=$(plans_count)
 [[ "$PLANS" == "4" ]] || die "esperava 4 planos, encontrei $PLANS"

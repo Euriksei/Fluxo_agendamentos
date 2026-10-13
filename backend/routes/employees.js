@@ -106,7 +106,7 @@ router.post('/', requireOwner, requireCanAddEmployee, async (req, res) =>
 
         const password_hash = await bcrypt.hash(password, 12);
 
-        const [result] = await pool.query(`INSERT INTO users (userId, name, shop, email, password, role) VALUES (?, ?, ?, ?, ?, 'EMPLOYEE')`,
+        const [result] = await pool.query(`INSERT INTO users (userId, name, shop, email, password, role, emailVerifiedAt) VALUES (?, ?, ?, ?, ?, 'EMPLOYEE', NOW())`,
             [ownerId, name.trim(), owner[0].shop, sanitizedEmail, password_hash]);
 
         const newEmployee = { id: result.insertId, name: name.trim(), email: sanitizedEmail, role: 'EMPLOYEE', created_at: new Date() };
@@ -163,7 +163,7 @@ router.put('/:id', async (req, res) => {
         if (password && password.length >= 8) {
             const password_hash = await bcrypt.hash(password, 12);
             await pool.query(
-                'UPDATE users SET name = ?, email = ?, password = ? WHERE id = ? AND userId = ?',
+                'UPDATE users SET name = ?, email = ?, password = ?, passwordChangedAt = NOW() WHERE id = ? AND userId = ?',
                 [name.trim(), email.toLowerCase().trim(), password_hash, id, ownerId]
             );
         } else if (password && password.length > 0 && password.length < 8) {

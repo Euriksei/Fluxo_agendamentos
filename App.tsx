@@ -10,6 +10,9 @@ import FeatureGate from '@/components/FeatureGate';
 const LandingPage = lazy(() => import('@/components/Landing Page/LandingPage'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
+const EsqueciSenha = lazy(() => import('@/pages/EsqueciSenha'));
+const RedefinirSenha = lazy(() => import('@/pages/RedefinirSenha'));
+const ConfirmarEmail = lazy(() => import('@/pages/ConfirmarEmail'));
 const Agendar = lazy(() => import('@/pages/Agendar'));
 const MeusAgendamentos = lazy(() => import('@/pages/MeusAgendamentos'));
 
@@ -43,6 +46,9 @@ const App: React.FC = () =>
                     <Route path="/" element={ <LandingPage /> } />
                     <Route path="/login" element={ <Login /> } />
                     <Route path="/registro" element={ <Register /> } />
+                    <Route path="/esqueci-senha" element={ <EsqueciSenha /> } />
+                    <Route path="/redefinir-senha" element={ <RedefinirSenha /> } />
+                    <Route path="/confirmar-email" element={ <ConfirmarEmail /> } />
                     <Route path="/agendar/:slug" element={ <Agendar /> } />
                     <Route path="/meus-agendamentos" element={ <MeusAgendamentos /> } />
 

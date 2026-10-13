@@ -43,12 +43,14 @@ export function AuthProvider({ children })
 
     useEffect(() => { verifyToken(); }, [authRequest]);
 
-    const login = useCallback(async (email, password) => 
+    // options.silent: the caller shows the error itself (Login renders EMAIL_NOT_VERIFIED inline)
+    const login = useCallback(async (email, password, options = {}) =>
     {
-        const data = await publicRequest('/api/auth/login', 
+        const data = await publicRequest('/api/auth/login',
         {
             method: 'POST',
             body: JSON.stringify({ email, password }),
+            ...options,
         });
 
         localStorage.setItem('token', data.token);

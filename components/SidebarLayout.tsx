@@ -1,9 +1,12 @@
-import { Suspense, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { ChevronsLeft, ChevronsRight, LogOut, Menu, X } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, KeyRound, LogOut, Menu, X } from 'lucide-react';
 
 import { NavLink } from '@/components/NavLink';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+
+// Only downloaded when someone opens it
+const AlterarSenhaModal = lazy(() => import('@/components/AlterarSenhaModal'));
 
 // feature: plan feature slug; when the plan lacks it the item shows a lock (the page itself shows the upgrade screen)
 export type SidebarItem = { to: string; label: string; icon: Parameters<typeof NavLink>[0]['icon']; feature?: string };
@@ -39,6 +42,9 @@ export default function SidebarLayout({ title, subtitle, items, onLogout, storag
 
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [expanded, setExpanded] = useState(() => readExpanded(storageKey));
+    const [passwordOpen, setPasswordOpen] = useState(false);
+
+    const openPassword = () => { setDrawerOpen(false); setPasswordOpen(true); };
 
     const menuButtonRef = useRef<HTMLButtonElement>(null);
     const drawerRef = useRef<HTMLDivElement>(null);
@@ -159,7 +165,11 @@ export default function SidebarLayout({ title, subtitle, items, onLogout, storag
                         {navList(false)}
                     </nav>
 
-                    <div className="border-t border-white/10 p-3">
+                    <div className="flex flex-col gap-1 border-t border-white/10 p-3">
+                        <button type="button" onClick={openPassword}
+                            className="flex min-h-11 w-full items-center gap-4 rounded-lg px-3 text-brand-gray hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple">
+                            <KeyRound size={20} aria-hidden="true" /> Alterar senha
+                        </button>
                         <button type="button" onClick={onLogout}
                             className="flex min-h-11 w-full items-center gap-4 rounded-lg px-3 text-red-400 hover:bg-white/5 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple">
                             <LogOut size={20} aria-hidden="true" /> Sair
@@ -191,7 +201,12 @@ export default function SidebarLayout({ title, subtitle, items, onLogout, storag
                     </nav>
                 </div>
 
-                <div className="border-t border-gray-700 p-3">
+                <div className="flex flex-col gap-1 border-t border-gray-700 p-3">
+                    <button type="button" onClick={openPassword} aria-label="Alterar senha" title="Alterar senha"
+                        className={`flex min-h-11 w-full items-center gap-4 rounded-lg px-3 text-sm text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple ${expanded ? '' : 'justify-center'}`}>
+                        <KeyRound size={18} aria-hidden="true" />
+                        {expanded && 'Alterar senha'}
+                    </button>
                     <button type="button" onClick={onLogout} aria-label="Sair" title="Sair"
                         className={`flex min-h-11 w-full items-center gap-4 rounded-lg px-3 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple ${expanded ? '' : 'justify-center'}`}>
                         <LogOut size={18} aria-hidden="true" />
@@ -210,6 +225,12 @@ export default function SidebarLayout({ title, subtitle, items, onLogout, storag
                     </Suspense>
                 </div>
             </main>
+
+            {passwordOpen && (
+                <Suspense fallback={null}>
+                    <AlterarSenhaModal onClose={() => setPasswordOpen(false)} />
+                </Suspense>
+            )}
         </div>
     );
 }

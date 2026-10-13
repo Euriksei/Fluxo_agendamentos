@@ -37,7 +37,49 @@ ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "sudo -u deploy -H pm2 restart fluxo
 
 Para ir para produção no Asaas, troque também `ASAAS_API_URL=https://api.asaas.com/v3` e use a chave de produção.
 
-## 4. Deploys seguintes
+## 4. Email (confirmação de cadastro e recuperação de senha)
+
+O app manda dois emails por SMTP: o link de confirmação do cadastro e o link do "Esqueci minha senha".
+
+> **Importante:** o login de quem se cadastra fica bloqueado até a pessoa clicar no link de confirmação. **Sem SMTP configurado, ninguém novo consegue entrar.** As telas respondem normalmente, mas o email não sai; só fica um erro no `pm2 logs`. Configure o SMTP antes de divulgar o cadastro.
+
+**Senha de app no Gmail.** A conta remetente precisa ter a verificação em 2 etapas ativada.
+1. Ative a verificação em 2 etapas em https://myaccount.google.com/security.
+2. Gere a senha de app em https://myaccount.google.com/apppasswords. Dê um nome, por exemplo "Fluxo VPS".
+3. Copie os 16 caracteres sem os espaços. Essa é a `SMTP_PASS`; a senha normal da conta não funciona.
+
+**Variáveis no `backend/.env`.** Edite como no passo 3. Se o `.env` foi criado antes desta versão, as linhas não existem: acrescente-as.
+
+```ini
+PUBLIC_URL=https://fluxoagendamentos.com.br
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=fluxoagendamentos@gmail.com
+SMTP_PASS=<senha de app de 16 caracteres>
+MAIL_FROM=Fluxo <fluxoagendamentos@gmail.com>
+```
+
+`PUBLIC_URL` é a base do link do email. Sem ela, em produção o link não é gerado.
+Depois de editar: `sudo -u deploy -H pm2 restart fluxo --update-env`, como no passo 3.
+
+**Migrations.** Rode uma vez, nesta ordem, logo depois do deploy desta versão. O `setup.sh` já faz isso em instalações novas.
+
+```bash
+ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/003_password_resets.sql"
+ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/004_email_verification.sql"
+```
+
+A 004 marca como confirmadas todas as contas que já existem (admin, donos, funcionários); sem isso ninguém entraria depois do deploy. Essa marcação só acontece na primeira execução, enquanto a tabela `email_verifications` está vazia. Rodar de novo depois não confirma cadastros novos por engano.
+
+**Regras:**
+- O link de redefinição de senha vale 1 hora; o de confirmação, 24 horas. Os dois são de uso único, e o banco guarda só o hash do token.
+- O reenvio da confirmação é limitado a 3 por 15 minutos por IP e a 1 por minuto por conta.
+- Funcionários criados pelo dono entram já confirmados.
+- Redefinir a senha pelo link do email também confirma o email.
+- Trocar ou redefinir a senha encerra as outras sessões abertas. A sessão de quem trocou continua.
+
+## 5. Deploys seguintes
 
 ```bash
 ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "sudo -u deploy -H bash /home/deploy/deploy.sh"
@@ -50,7 +92,7 @@ Migrations novas não rodam sozinhas. Aplique cada uma com:
 ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/<arquivo>.sql"
 ```
 
-## 5. Criar o admin
+## 6. Criar o admin
 
 1. Crie a conta normalmente em https://fluxoagendamentos.com.br/registro.
 2. Promova a conta para admin:

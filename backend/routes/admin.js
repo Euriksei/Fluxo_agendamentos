@@ -134,7 +134,7 @@ router.put('/users/:id', async (req, res) =>
         if (password && password.length >= 8) {
             const hash = await bcrypt.hash(password, 12);
             await pool.query(
-                'UPDATE users SET name = COALESCE(?, name), email = COALESCE(?, email), shop = COALESCE(?, shop), password = ? WHERE id = ?',
+                'UPDATE users SET name = COALESCE(?, name), email = COALESCE(?, email), shop = COALESCE(?, shop), password = ?, passwordChangedAt = NOW() WHERE id = ?',
                 [name, email?.toLowerCase(), shop, hash, id]
             );
         } else {
@@ -167,7 +167,7 @@ router.post('/users/:id/reset-password', async (req, res) =>
         }
 
         const hash = await bcrypt.hash(newPassword, 12);
-        await pool.query('UPDATE users SET password = ? WHERE id = ?', [hash, id]);
+        await pool.query('UPDATE users SET password = ?, passwordChangedAt = NOW() WHERE id = ?', [hash, id]);
 
         res.json({ message: 'Senha atualizada com sucesso' });
     } catch (error) {

@@ -45,6 +45,28 @@ const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { e
 
 app.use('/api/auth/login', loginLimiter);
 
+// Recuperação/troca de senha: cada pedido pode disparar um email, e a troca confere a senha atual (força bruta)
+const forgotPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { error: 'Muitas solicitações de redefinição. Aguarde 15 minutos.' }, standardHeaders: true,
+    legacyHeaders: false });
+const resetPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Muitas tentativas. Aguarde 15 minutos.' }, standardHeaders: true, legacyHeaders: false });
+const changePasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Muitas tentativas de troca de senha. Aguarde 15 minutos.' }, standardHeaders: true,
+    legacyHeaders: false, skipSuccessfulRequests: true });
+
+app.use('/api/auth/forgot-password', forgotPasswordLimiter);
+app.use('/api/auth/reset-password', resetPasswordLimiter);
+app.use('/api/auth/password', changePasswordLimiter);
+
+// Confirmação de email: cadastro e reenvio disparam email (evita usar o app para mandar spam a terceiros)
+const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: { error: 'Muitos cadastros a partir desta rede. Tente novamente mais tarde.' }, standardHeaders: true,
+    legacyHeaders: false });
+const resendVerificationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3, message: { error: 'Muitos reenvios. Aguarde 15 minutos e confira também a caixa de spam.' }, standardHeaders: true,
+    legacyHeaders: false });
+const verifyEmailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'Muitas tentativas. Aguarde 15 minutos.' }, standardHeaders: true, legacyHeaders: false });
+
+app.use('/api/auth/register', registerLimiter);
+app.use('/api/auth/resend-verification', resendVerificationLimiter);
+app.use('/api/auth/verify-email', verifyEmailLimiter);
+
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
