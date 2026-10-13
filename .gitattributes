@@ -1,0 +1,4 @@
+# Scripts de deploy rodam no Linux (bash -s < deploy/setup.sh a partir do Windows): sempre LF
+*.sh text eol=lf
+deploy/* text eol=lf
+ecosystem.config.cjs text eol=lf
