@@ -4,6 +4,13 @@
   --sb-tint-opacity: 0;
   --sb-blur: 0px;
   --sb-text-color: #f5f5f5;
+  --sb-line: #ffffff;
+  --sb-base: #525252;
+  --sb-intensity: 1;
+  --sb-shine: 5deg;
+  --sb-fade: 20deg;
+  --sb-thickness: 1px;
+  --sb-duration: 18s;
 
   position: relative;
   display: inline-flex;
@@ -21,6 +28,7 @@
   backdrop-filter: blur(var(--sb-blur));
   -webkit-backdrop-filter: blur(var(--sb-blur));
   box-shadow:
+    inset 0 0 0 var(--sb-thickness) color-mix(in srgb, var(--sb-base) 45%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 8px 24px rgba(0, 0, 0, 0.25);
   cursor: pointer;
@@ -61,18 +69,68 @@
   padding: 18px 40px;
 }
 
-/* Canvas extends past the button so the rim glow can bleed outside the edge */
+/* Rim ring: the content box is masked out, leaving a `--sb-thickness` frame that follows the border radius */
 .specular-button__fx {
   position: absolute;
-  inset: -20px;
-  pointer-events: none;
+  inset: 0;
   z-index: 1;
+  padding: var(--sb-thickness);
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
 
-.specular-button__fx canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
+/* Two opposite streaks (light catches the facing and the far edge). A square wider than the button's diagonal rotates
+   behind the ring; only `transform` animates, so the sweep stays on the compositor. */
+.specular-button__fx::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120%;
+  aspect-ratio: 1;
+  background: conic-gradient(
+    var(--sb-line) 0deg var(--sb-shine),
+    transparent calc(var(--sb-shine) + var(--sb-fade)) calc(180deg - var(--sb-shine) - var(--sb-fade)),
+    var(--sb-line) calc(180deg - var(--sb-shine)) calc(180deg + var(--sb-shine)),
+    transparent calc(180deg + var(--sb-shine) + var(--sb-fade)) calc(360deg - var(--sb-shine) - var(--sb-fade)),
+    var(--sb-line) calc(360deg - var(--sb-shine))
+  );
+  transform: translate(-50%, -50%) rotate(-48deg);
+  animation: specular-sweep var(--sb-duration) linear infinite paused;
+}
+
+@keyframes specular-sweep {
+  from { transform: translate(-50%, -50%) rotate(-48deg); }
+  to { transform: translate(-50%, -50%) rotate(312deg); }
+}
+
+/* autoAnimate: always on. Otherwise the streak fades in and sweeps only while hovered or focused, and rests paused. */
+.specular-button--auto .specular-button__fx,
+.specular-button:hover .specular-button__fx,
+.specular-button:focus-visible .specular-button__fx {
+  opacity: var(--sb-intensity);
+}
+
+.specular-button--auto .specular-button__fx::before,
+.specular-button:hover .specular-button__fx::before,
+.specular-button:focus-visible .specular-button__fx::before {
+  animation-play-state: running;
+}
+
+.specular-button:disabled .specular-button__fx::before {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .specular-button__fx::before {
+    animation: none;
+  }
 }
 
 .specular-button__label {

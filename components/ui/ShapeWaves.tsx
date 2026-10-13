@@ -5,7 +5,6 @@ import { effect, frame, init, sampler, storage, surface, target, uniforms } from
 import './ShapeWaves.css';
 
 const SHAPE_MODES = { mixed: 0, squares: 1, circles: 2, triangles: 3 };
-const MAX_DPR = 2;
 const MAX_MASK_SIZE = 1024;
 const NOISE_CELLS = 32;
 const TIME_RATE = 0.1;
@@ -293,6 +292,12 @@ interface ShapeWavesProps
   introDuration?: number;
   introKey?: string | number;
   paused?: boolean;
+  /** Caps the canvas resolution; each step above 1 multiplies the pixels shaded per frame */
+  maxDpr?: number;
+  /** Frame-rate cap for the continuous animation (0 = display rate) */
+  maxFps?: number;
+  /** Fires once, after the first frame is on screen */
+  onReady?: () => void;
   onError?: (error: Error) => void;
   className?: string;
 }
@@ -323,6 +328,9 @@ export default function ShapeWaves({
   introDuration = 1.6,
   introKey = 0,
   paused = false,
+  maxDpr = 2,
+  maxFps = 0,
+  onReady,
   onError,
   className = ''
 }: ShapeWavesProps) {
@@ -333,6 +341,9 @@ export default function ShapeWaves({
   const applySettingsRef = useRef(() => {});
   const applyMaskRef = useRef(() => {});
   const onErrorRef = useRef(onError);
+  const onReadyRef = useRef(onReady);
+  const maxDprRef = useRef(maxDpr);
+  const maxFpsRef = useRef(maxFps);
 
   settingsRef.current = {
     text: String(text ?? ''),
@@ -362,6 +373,9 @@ export default function ShapeWaves({
     paused
   };
   onErrorRef.current = onError;
+  onReadyRef.current = onReady;
+  maxDprRef.current = maxDpr;
+  maxFpsRef.current = maxFps;
 
   const settingsSignature = [
     shapes,
@@ -411,6 +425,7 @@ export default function ShapeWaves({
     let maskTexture: any;
     let chargeBuffer: any;
     let frameId = 0;
+    let throttleTimer = 0;
     let lastFrameTime = 0;
     let time = 0;
     let drift = [0, 0];
@@ -492,6 +507,8 @@ export default function ShapeWaves({
       console.error('[ShapeWaves] renderer failed:', error);
       if (frameId) cancelAnimationFrame(frameId);
       frameId = 0;
+      clearTimeout(throttleTimer);
+      throttleTimer = 0;
       resizeObserver?.disconnect();
       if (resizeFrame) cancelAnimationFrame(resizeFrame);
       visibilityObserver?.disconnect();
@@ -506,7 +523,7 @@ export default function ShapeWaves({
     };
 
     const measureSurface = (): [number, number] => {
-      dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+      dpr = Math.min(window.devicePixelRatio || 1, maxDprRef.current);
       return [Math.max(1, Math.round(canvas.clientWidth * dpr)), Math.max(1, Math.round(canvas.clientHeight * dpr))];
     };
 
@@ -658,6 +675,15 @@ export default function ShapeWaves({
         const render = (now: number) => {
           frameId = 0;
           if (disposed || failed) return;
+          // Frame cap: sleep until the next allowed frame instead of waking on every vsync; delta time stays real
+          const minFrameMs = maxFpsRef.current > 0 ? 1000 / maxFpsRef.current : 0;
+          if (minFrameMs && lastFrameTime && now - lastFrameTime < minFrameMs - 2) {
+            throttleTimer = window.setTimeout(() => {
+              throttleTimer = 0;
+              frameId = requestAnimationFrame(render);
+            }, minFrameMs - (now - lastFrameTime) - 2);
+            return;
+          }
           const settings = settingsRef.current;
           const deltaSeconds = lastFrameTime ? Math.min(0.1, (now - lastFrameTime) / 1000) : 0;
           lastFrameTime = now;
@@ -706,13 +732,14 @@ export default function ShapeWaves({
           if (!presented) {
             presented = true;
             setReady(true);
+            onReadyRef.current?.();
           }
           if (animating || hovering || introPlaying) frameId = requestAnimationFrame(render);
           else lastFrameTime = 0;
         };
 
         wakeRenderer = () => {
-          if (disposed || failed || frameId) return;
+          if (disposed || failed || frameId || throttleTimer) return;
           frameId = requestAnimationFrame(render);
         };
 
@@ -866,6 +893,7 @@ export default function ShapeWaves({
       visibilityObserver?.disconnect();
       unsubscribeGpuError?.();
       if (frameId) cancelAnimationFrame(frameId);
+      clearTimeout(throttleTimer);
       maskTexture?.destroy();
       chargeBuffer?.destroy();
       gpu?.dispose();

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, LogOut, Menu, X } from 'lucide-react';
 
@@ -204,9 +204,21 @@ export default function SidebarLayout({ title, subtitle, items, onLogout, storag
                 px-4 pt-[calc(3.5rem+env(safe-area-inset-top)+1.5rem)] pb-[calc(2.5rem+env(safe-area-inset-bottom))] sm:px-6
                 md:px-10 md:py-12 xl:px-12 ${expanded ? 'md:ml-56' : 'md:ml-20'}`}>
                 <div className="mx-auto w-full max-w-[1760px]">
-                    <Outlet />
+                    {/* Pages are lazy chunks: keep the sidebar on screen while the next one loads */}
+                    <Suspense fallback={<PageSpinner />}>
+                        <Outlet />
+                    </Suspense>
                 </div>
             </main>
+        </div>
+    );
+}
+
+function PageSpinner()
+{
+    return (
+        <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Carregando">
+            <div className="size-8 animate-spin rounded-full border-2 border-white/15 border-t-brand-purple motion-reduce:animate-none" />
         </div>
     );
 }

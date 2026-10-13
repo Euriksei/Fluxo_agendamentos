@@ -1,6 +1,8 @@
 import { NavLink as OrNavLink } from 'react-router-dom';
-import * as Icons from "lucide-react";
-import { LucideIcon, Lock } from "lucide-react";
+import { Calendar, Clock, CreditCard, Crown, DollarSign, LayoutDashboard, Lock, Toolbox, Users } from "lucide-react";
+
+// Explicit map: `import * as Icons` pulled the whole lucide set (~700 kB) into the panel bundle
+const Icons = { Calendar, Clock, CreditCard, Crown, DollarSign, LayoutDashboard, Toolbox, Users };
 
 type NavLinkProps =
 {
@@ -15,7 +17,7 @@ export function NavLink({ to, label, icon, collapsed, locked = false }: NavLinkP
 {
     // min-h-11 keeps every item a >=44px touch target
     const baseClass = "relative flex min-h-11 items-center gap-4 rounded-lg px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple";
-    const IconComponent = Icons[icon] as LucideIcon;
+    const IconComponent = Icons[icon];
     const name = locked ? `${label} (disponível em planos pagos)` : label;
 
     return (

@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts';
 
 import Logo from '@/components/Logo';
-import ShapeWaves from '@/components/ui/ShapeWaves';
+import WavesBackground from '@/components/ui/WavesBackground';
 import SpecularButton from '@/components/ui/SpecularButton';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
@@ -44,9 +44,7 @@ export default function Login()
 
     return (
         <section className="relative min-h-svh flex items-center justify-center bg-brand-black px-4 py-10 overflow-hidden">
-            <div className="absolute inset-0" aria-hidden="true">
-                <ShapeWaves color="#3F3F52" hoverColor="#7C3AED" backgroundColor="#0F0F14" cellSize={12} glow={0.4} fade={0.3} />
-            </div>
+            <WavesBackground color="#3F3F52" hoverColor="#7C3AED" backgroundColor="#0F0F14" cellSize={12} glow={0.4} fade={0.3} />
 
             <div className="relative z-10 w-full max-w-md">
 
