@@ -141,6 +141,8 @@ log "Aplicando migrations/003_password_resets.sql (idempotente)"
 mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/003_password_resets.sql"
 log "Aplicando migrations/004_email_verification.sql (idempotente; só a 1ª execução marca as contas existentes como confirmadas)"
 mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/004_email_verification.sql"
+log "Aplicando migrations/005_email_change.sql (idempotente)"
+mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/005_email_change.sql"
 
 PLANS=$(plans_count)
 [[ "$PLANS" == "4" ]] || die "esperava 4 planos, encontrei $PLANS"

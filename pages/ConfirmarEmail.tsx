@@ -13,7 +13,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 
 const TOKEN_FORMAT = /^[a-f0-9]{64}$/;
 
-type Status = 'loading' | 'done' | 'invalid' | 'error';
+type Status = 'loading' | 'done' | 'invalid' | 'unavailable' | 'error';
 
 const linkClass = 'inline-flex min-h-11 items-center px-1 gradient-text font-bold rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-purple/60';
 
@@ -28,6 +28,8 @@ export default function ConfirmarEmail()
     const [status, setStatus] = useState<Status>(() => TOKEN_FORMAT.test(token) ? 'loading' : 'invalid');
     const [message, setMessage] = useState('');
     const [email, setEmail] = useState('');
+    // Same page serves both links: signup confirmation and email change (the API tells which one it was)
+    const [emailChanged, setEmailChanged] = useState(false);
 
     // StrictMode runs effects twice in dev: the token must be sent once (the second call would see it already used)
     const requested = useRef(false);
@@ -38,11 +40,17 @@ export default function ConfirmarEmail()
         requested.current = true;
 
         publicRequest('/api/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }), silent: true })
-            .then((data) => { setMessage(data.message); setStatus('done'); })
-            .catch((err) => setStatus(err?.data?.code === 'INVALID_VERIFY_TOKEN' ? 'invalid' : 'error'));
+            .then((data) => { setMessage(data.message); setEmailChanged(Boolean(data.emailChanged)); setStatus('done'); })
+            .catch((err) =>
+            {
+                const code = err?.data?.code;
+                // EMAIL_UNAVAILABLE: email change whose new address was taken by another account before the link was opened
+                setStatus(code === 'INVALID_VERIFY_TOKEN' ? 'invalid' : code === 'EMAIL_UNAVAILABLE' ? 'unavailable' : 'error');
+            });
     }, [status, token, publicRequest]);
 
-    const title = { loading: 'Confirmando email', done: 'Email confirmado', invalid: 'Link inválido ou expirado', error: 'Não foi possível confirmar' }[status];
+    const title = { loading: 'Confirmando email', done: emailChanged ? 'Email alterado' : 'Email confirmado', invalid: 'Link inválido ou expirado', unavailable: 'Email indisponível',
+        error: 'Não foi possível confirmar' }[status];
 
     return (
         <section className="relative min-h-svh flex items-center justify-center bg-brand-black px-4 py-10 overflow-hidden">
@@ -76,6 +84,14 @@ export default function ConfirmarEmail()
                             </div>
                         )}
 
+                        {status === 'unavailable' && (
+                            <div role="alert" className="flex flex-col items-center gap-3 text-center">
+                                <TriangleAlert className="size-10 text-amber-400" aria-hidden="true" />
+                                <p className="text-sm text-white">Não foi possível trocar para este email. Sua conta continua com o email anterior.</p>
+                                <p className="text-sm text-brand-gray">Peça a troca de novo dentro do app usando outro endereço.</p>
+                            </div>
+                        )}
+
                         {status === 'error' && (
                             <div role="alert" className="flex flex-col items-center gap-3 text-center">
                                 <TriangleAlert className="size-10 text-amber-400" aria-hidden="true" />
@@ -93,6 +109,7 @@ export default function ConfirmarEmail()
                                     <TriangleAlert className="size-10 text-amber-400" aria-hidden="true" />
                                     <p className="text-sm text-white">Este link de confirmação é inválido ou expirou.</p>
                                     <p className="text-sm text-brand-gray">Os links valem por 24 horas. Informe seu e-mail para receber um novo.</p>
+                                    <p className="text-sm text-brand-gray">Se o link era de uma troca de email, peça a troca de novo dentro do app.</p>
                                 </div>
 
                                 <div className="grid gap-2">

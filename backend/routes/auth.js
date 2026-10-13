@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 
 import pool from '../config/database.js';
 
@@ -9,7 +10,7 @@ import { authenticateToken, requireAdmin, signUserToken } from '../middlewares/a
 import { validateEmail, validatePassword, PASSWORD_MIN_LENGTH } from '../utils/validations.js';
 import { getOwnerId, generateSlug } from '../utils/user.js';
 import { getPlans } from '../utils/plans.js';
-import { sendPasswordResetEmail, sendEmailVerificationEmail } from '../utils/mailer.js';
+import { sendPasswordResetEmail, sendEmailVerificationEmail, sendEmailChangeEmail, sendEmailChangeNotice } from '../utils/mailer.js';
 import { ownerHasFeature } from '../middlewares/subscription.js';
 
 const router = express.Router();
@@ -23,6 +24,8 @@ const VERIFY_TOKEN_TTL_MINUTES = 24 * 60;
 const RESEND_VERIFICATION_COOLDOWN_SECONDS = 60;
 const RESEND_VERIFICATION_MESSAGE = 'Se houver uma conta aguardando confirmação com este email, enviamos um novo link.';
 const INVALID_VERIFY_TOKEN = { error: 'Este link de confirmação é inválido ou expirou. Peça um novo link.', code: 'INVALID_VERIFY_TOKEN' };
+// Genérico de propósito: não confirma se o endereço pertence a outra conta
+const EMAIL_UNAVAILABLE = { error: 'Não foi possível usar este email. Tente outro endereço.', code: 'EMAIL_UNAVAILABLE' };
 
 // No banco vai só o SHA-256 do token; o token puro existe apenas no link do email
 const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
@@ -34,16 +37,17 @@ const getPublicUrl = () => (process.env.PUBLIC_URL || (process.env.NODE_ENV === 
 // Momento da troca de senha truncado ao segundo: vai para users.passwordChangedAt e vira o iat do JWT novo da sessão atual
 const passwordChangeStamp = () => { const iat = Math.floor(Date.now() / 1000); return { iat, at: new Date(iat * 1000) }; };
 
-// Gera o token de confirmação (substitui os anteriores do usuário) e dispara o email sem await.
-// Recebe a conexão para entrar na mesma transação do cadastro.
-const issueEmailVerification = async (db, user) =>
+// Gera o token de confirmação (substitui os anteriores do mesmo fluxo) e devolve a função que dispara o email, para chamar
+// depois do commit. newEmail ausente = confirmação do cadastro (link vai para user.email); presente = troca de email (link vai
+// para o endereço novo, gravado em email_verifications.email). Recebe a conexão para entrar na transação de quem chama.
+const issueEmailVerification = async (db, user, newEmail = null) =>
 {
     const publicUrl = getPublicUrl();
     const token = crypto.randomBytes(32).toString('hex');
 
-    await db.query('DELETE FROM email_verifications WHERE userId = ?', [user.id]);
-    await db.query('INSERT INTO email_verifications (userId, tokenHash, expiresAt) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))',
-        [user.id, hashResetToken(token), VERIFY_TOKEN_TTL_MINUTES]);
+    await db.query(`DELETE FROM email_verifications WHERE userId = ? AND email IS ${newEmail ? 'NOT ' : ''}NULL`, [user.id]);
+    await db.query('INSERT INTO email_verifications (userId, email, tokenHash, expiresAt) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))',
+        [user.id, newEmail, hashResetToken(token), VERIFY_TOKEN_TTL_MINUTES]);
 
     if (!publicUrl)
     {
@@ -51,8 +55,16 @@ const issueEmailVerification = async (db, user) =>
         return;
     }
 
-    return () => sendEmailVerificationEmail({ to: user.email, name: user.name, link: `${publicUrl}/confirmar-email?token=${token}`, expiresInMinutes: VERIFY_TOKEN_TTL_MINUTES })
-        .catch((error) => console.error('[email-verification] Erro no envio:', error.message));
+    const link = `${publicUrl}/confirmar-email?token=${token}`;
+    const logError = (error) => console.error('[email-verification] Erro no envio:', error.message);
+
+    if (!newEmail) return () => sendEmailVerificationEmail({ to: user.email, name: user.name, link, expiresInMinutes: VERIFY_TOKEN_TTL_MINUTES }).catch(logError);
+
+    return () => 
+    {
+        sendEmailChangeEmail({ to: newEmail, name: user.name, link, expiresInMinutes: VERIFY_TOKEN_TTL_MINUTES }).catch(logError);
+        sendEmailChangeNotice({ to: user.email, name: user.name, newEmail }).catch(logError);
+    };
 };
 
 router.post('/login', async (req, res) => 
@@ -188,11 +200,41 @@ router.post('/verify-email', async (req, res) =>
 
         await connection.beginTransaction();
 
-        const [rows] = await connection.query(`SELECT v.id, v.userId, v.usedAt, v.expiresAt > NOW() AS valid, u.emailVerifiedAt FROM email_verifications v
+        const [rows] = await connection.query(`SELECT v.id, v.userId, v.email AS newEmail, v.usedAt, v.expiresAt > NOW() AS valid, u.email, u.emailVerifiedAt FROM email_verifications v
             JOIN users u ON u.id = v.userId WHERE v.tokenHash = ? FOR UPDATE`, [hashResetToken(token)]);
         if (rows.length === 0) return res.status(400).json(INVALID_VERIFY_TOKEN);
 
         const verification = rows[0];
+
+        if (verification.newEmail) 
+        {
+            // Troca de email: link reaberto depois de concluída = sucesso idempotente
+            if (verification.email === verification.newEmail) return res.json({ message: 'Email já alterado. Use o novo email para entrar.', alreadyVerified: true, emailChanged: true });
+            if (verification.usedAt || !verification.valid) return res.status(400).json(INVALID_VERIFY_TOKEN);
+
+            // O endereço pode ter sido cadastrado por outra conta depois do pedido
+            const [taken] = await connection.query('SELECT id FROM users WHERE email = ? AND id <> ?', [verification.newEmail, verification.userId]);
+            if (taken.length > 0) return res.status(400).json(EMAIL_UNAVAILABLE);
+
+            try 
+            {
+                // Abrir o link prova a posse do endereço novo: também confirma a conta se ainda não estava
+                await connection.query('UPDATE users SET email = ?, pendingEmail = NULL, emailVerifiedAt = COALESCE(emailVerifiedAt, NOW()) WHERE id = ?',
+                    [verification.newEmail, verification.userId]);
+            } 
+            catch (error) 
+            {
+                if (error.code === 'ER_DUP_ENTRY') return res.status(400).json(EMAIL_UNAVAILABLE);
+                throw error;
+            }
+
+            await connection.query('UPDATE email_verifications SET usedAt = NOW() WHERE id = ?', [verification.id]);
+            await connection.query('DELETE FROM email_verifications WHERE userId = ? AND email IS NOT NULL AND id <> ?', [verification.userId, verification.id]);
+
+            await connection.commit();
+
+            return res.json({ message: 'Email alterado. Use o novo email para entrar.', alreadyVerified: false, emailChanged: true });
+        }
 
         // Link aberto de novo (ou conta já confirmada por outro caminho, ex.: redefinição de senha): sucesso idempotente
         if (verification.emailVerifiedAt) return res.json({ message: 'Email já confirmado. Você já pode entrar.', alreadyVerified: true });
@@ -201,7 +243,7 @@ router.post('/verify-email', async (req, res) =>
 
         await connection.query('UPDATE users SET emailVerifiedAt = NOW() WHERE id = ?', [verification.userId]);
         await connection.query('UPDATE email_verifications SET usedAt = NOW() WHERE id = ?', [verification.id]);
-        await connection.query('DELETE FROM email_verifications WHERE userId = ? AND id <> ?', [verification.userId, verification.id]);
+        await connection.query('DELETE FROM email_verifications WHERE userId = ? AND email IS NULL AND id <> ?', [verification.userId, verification.id]);
 
         await connection.commit();
 
@@ -227,7 +269,7 @@ router.post('/resend-verification', async (req, res) =>
         const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase().trim() : '';
         if (!validateEmail(email)) return res.json({ message: RESEND_VERIFICATION_MESSAGE });
 
-        const [users] = await pool.query(`SELECT u.id, u.name, u.email, (SELECT MAX(v.createdAt) > DATE_SUB(NOW(), INTERVAL ? SECOND) FROM email_verifications v WHERE v.userId = u.id) AS recent
+        const [users] = await pool.query(`SELECT u.id, u.name, u.email, (SELECT MAX(v.createdAt) > DATE_SUB(NOW(), INTERVAL ? SECOND) FROM email_verifications v WHERE v.userId = u.id AND v.email IS NULL) AS recent
             FROM users u WHERE u.email = ? AND u.emailVerifiedAt IS NULL`, [RESEND_VERIFICATION_COOLDOWN_SECONDS, email]);
 
         // Intervalo mínimo por usuário (além do rate limit por IP): um link novo a cada 60s no máximo
@@ -482,17 +524,33 @@ router.get('/me', async (req, res) =>
     }
 });
 
-router.put('/me', async (req, res) => 
+// Troca de email pelo PUT /me: mesmo limite por IP do reenvio de confirmação, contando só quando o email muda
+const emailChangeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3, message: { error: 'Muitos pedidos de troca de email. Aguarde 15 minutos.' }, standardHeaders: true,
+    legacyHeaders: false, skip: (req) => !req.emailChangeRequested });
+
+const detectEmailChange = async (req, res, next) => 
+{
+    try 
+    {
+        const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase().trim() : '';
+        const [rows] = await pool.query('SELECT email FROM users WHERE id = ?', [req.user.id]);
+        req.emailChangeRequested = Boolean(email) && rows.length > 0 && rows[0].email !== email;
+        next();
+    } 
+    catch (error) 
+    {
+        next(error);
+    }
+};
+
+router.put('/me', detectEmailChange, emailChangeLimiter, async (req, res) => 
 {
     const connection = await pool.getConnection();
 
     try 
     {
-        await connection.beginTransaction();
-
         const userId = req.user.id;
         const { name, shop, email, currentPassword, newPassword } = req.body;
-        let newToken = null;
 
         if (!name || !shop || !email) return res.status(400).json({ error: 'Nome, Loja e Email são obrigatórios' });
 
@@ -500,41 +558,74 @@ router.put('/me', async (req, res) =>
 
         const sanitizedEmail = email.toLowerCase().trim();
 
-        const [emailInUse] = await connection.query('SELECT id FROM users WHERE email = ? AND id <> ?', [sanitizedEmail, userId]);
-        if (emailInUse.length > 0) return res.status(400).json({ error: 'Email já está em uso' });
+        await connection.beginTransaction();
+
+        const [users] = await connection.query('SELECT id, name, email, role, password, pendingEmail FROM users WHERE id = ? FOR UPDATE', [userId]);
+        if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+        const current = users[0];
+        const emailChanging = sanitizedEmail !== current.email;
+
+        // Trocar a senha ou o email exige a senha atual. 400 e não 401: o front trata 401 como sessão expirada e desloga
+        if (newPassword || emailChanging) 
+        {
+            if (!currentPassword) return res.status(400).json({ error: 'Informe a senha atual para trocar o email ou a senha' });
+
+            const isValidPassword = await bcrypt.compare(String(currentPassword), current.password);
+            if (!isValidPassword) return res.status(400).json({ error: 'Senha atual incorreta' });
+        }
+
+        if (newPassword && !validatePassword(newPassword)) return res.status(400).json({ error: `Nova senha deve ter no mínimo ${PASSWORD_MIN_LENGTH} caracteres` });
+
+        // Email novo não troca na hora: fica pendente até o link enviado para ele ser aberto; o login segue com o atual
+        let sendEmails = null;
+
+        if (emailChanging) 
+        {
+            const [inUse] = await connection.query('SELECT id FROM users WHERE email = ? AND id <> ?', [sanitizedEmail, userId]);
+            if (inUse.length > 0) return res.status(400).json(EMAIL_UNAVAILABLE);
+
+            // Mesmo intervalo mínimo do reenvio de confirmação: um link de troca a cada 60s por conta
+            const [[cooldown]] = await connection.query('SELECT MAX(createdAt) > DATE_SUB(NOW(), INTERVAL ? SECOND) AS recent FROM email_verifications WHERE userId = ? AND email IS NOT NULL',
+                [RESEND_VERIFICATION_COOLDOWN_SECONDS, userId]);
+            if (cooldown.recent) return res.status(429).json({ error: 'Aguarde 1 minuto antes de pedir outra troca de email.' });
+
+            await connection.query('UPDATE users SET pendingEmail = ? WHERE id = ?', [sanitizedEmail, userId]);
+            sendEmails = await issueEmailVerification(connection, current, sanitizedEmail);
+        }
+
+        let newToken = null;
 
         if (newPassword) 
         {
-            if (!currentPassword) return res.status(400).json({ error: 'Senha atual é obrigatória para trocar a senha' });
-
-            if (!validatePassword(newPassword)) return res.status(400).json({ error: `Nova senha deve ter no mínimo ${PASSWORD_MIN_LENGTH} caracteres` });
-
-            const [user] = await connection.query('SELECT password FROM users WHERE id = ?', [userId]);
-
-            // 400 e não 401: o front trata 401 como sessão expirada e desloga
-            const isValidPassword = await bcrypt.compare(currentPassword, user[0].password);
-            if (!isValidPassword) return res.status(400).json({ error: 'Senha atual incorreta' });
-
             const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
             // Mesma regra do PUT /password: derruba as outras sessões e devolve um JWT novo para esta
             const stamp = passwordChangeStamp();
-            await connection.query('UPDATE users SET name = ?, shop = ?, email = ?, password = ?, passwordChangedAt = ? WHERE id = ?',
-                [name.trim(), shop.trim(), sanitizedEmail, newPasswordHash, stamp.at, userId]);
-            newToken = signUserToken({ id: userId, email: sanitizedEmail, role: req.user.role }, stamp.iat);
+            await connection.query('UPDATE users SET name = ?, shop = ?, password = ?, passwordChangedAt = ? WHERE id = ?',
+                [name.trim(), shop.trim(), newPasswordHash, stamp.at, userId]);
+            newToken = signUserToken(current, stamp.iat);
         } 
         else 
         {
-            await connection.query('UPDATE users SET name = ?, shop = ?, email = ? WHERE id = ?', [name.trim(), shop.trim(), sanitizedEmail, userId]);
+            await connection.query('UPDATE users SET name = ?, shop = ? WHERE id = ?', [name.trim(), shop.trim(), userId]);
         }
 
         await connection.commit();
+        sendEmails?.();
 
-        res.status(200).json({ id: userId, name: name.trim(), shop: shop.trim(), email: sanitizedEmail, ...(newToken && { token: newToken }) });
+        res.status(200).json({
+            id: userId,
+            name: name.trim(),
+            shop: shop.trim(),
+            email: current.email,
+            pendingEmail: emailChanging ? sanitizedEmail : current.pendingEmail,
+            ...(emailChanging && { emailChangePending: true, message: `Enviamos um link de confirmação para ${sanitizedEmail}. O email da conta só muda depois que você abrir esse link.` }),
+            ...(newToken && { token: newToken })
+        });
     } 
     catch (error) 
     {
-        await connection.rollback();
         console.error('Update profile error:', error);
         res.status(500).json({ error: 'Erro ao atualizar perfil' });
     } 

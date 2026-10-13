@@ -138,3 +138,56 @@ export const sendEmailVerificationEmail = ({ to, name, link, expiresInMinutes = 
         ignoreNote: 'Se você não criou uma conta no Fluxo, ignore este email.'
     })
 });
+
+export const sendEmailChangeEmail = ({ to, name, link, expiresInMinutes = 24 * 60 }) => sendActionEmail({
+    to, link, kind: 'troca de email', subject: 'Confirme seu novo email - Fluxo',
+    content: renderActionEmail({
+        title: 'Confirme seu novo email',
+        greeting: firstNameOf(name),
+        intro: 'recebemos um pedido para trocar o email da sua conta no Fluxo para este endereço.',
+        action: 'Para confirmar a troca,',
+        actionLabel: 'Confirmar novo email',
+        link,
+        validity: formatValidity(expiresInMinutes),
+        ignoreNote: 'Se você não pediu essa troca, ignore este email: nada muda na conta.'
+    })
+});
+
+// Mostra só o começo do endereço novo no aviso ao email antigo (quem lê a caixa antiga não precisa do endereço inteiro)
+const maskEmail = (email) => { const [user, domain] = String(email).split('@'); return `${user.slice(0, 2)}${'*'.repeat(Math.max(user.length - 2, 1))}@${domain}`; };
+
+// Aviso sem link para o email antigo: a troca só acontece quando o novo endereço confirmar
+export async function sendEmailChangeNotice({ to, name, newEmail })
+{
+    const config = getConfig();
+    if (!config.host) return false;
+
+    const greeting = firstNameOf(name);
+    const masked = maskEmail(newEmail);
+    const note = 'Se não foi você, troque sua senha no Fluxo agora: o email só muda quando o novo endereço confirmar a troca.';
+
+    const text = [`${greeting}, recebemos um pedido para trocar o email da sua conta no Fluxo para ${masked}.`, '', note, '', 'Equipe Fluxo'].join('\n');
+    const html = `<!doctype html>
+<html lang="pt-BR">
+<body style="margin:0;padding:24px;background:#0F0F14;font-family:Arial,Helvetica,sans-serif;color:#E5E7EB;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#1A1A24;border-radius:12px;">
+        <tr><td style="padding:32px 28px;">
+            <h1 style="margin:0 0 16px;font-size:22px;color:#FFFFFF;">Pedido de troca de email</h1>
+            <p style="margin:0 0 12px;font-size:15px;line-height:1.5;">${escapeHtml(greeting)}, recebemos um pedido para trocar o email da sua conta no Fluxo para <strong>${escapeHtml(masked)}</strong>.</p>
+            <p style="margin:0;font-size:13px;line-height:1.5;color:#9CA3AF;">${escapeHtml(note)}</p>
+        </td></tr>
+    </table>
+</body>
+</html>`;
+
+    try
+    {
+        await getTransporter(config).sendMail({ from: config.from, to, subject: 'Pedido de troca de email - Fluxo', text, html });
+        return true;
+    }
+    catch (error)
+    {
+        console.error('[mailer] Falha ao enviar aviso de troca de email:', error.message);
+        return false;
+    }
+}

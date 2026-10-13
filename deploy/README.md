@@ -68,7 +68,10 @@ Depois de editar: `sudo -u deploy -H pm2 restart fluxo --update-env`, como no pa
 ```bash
 ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/003_password_resets.sql"
 ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/004_email_verification.sql"
+ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/005_email_change.sql"
 ```
+
+A 005 vem com a troca de email: o email novo fica pendente até o link enviado para ele ser aberto. Se o servidor já tem a 003 e a 004, rode só a 005, logo após o deploy da versão que a traz. Até lá, cadastro, confirmação de email, reenvio e troca de email dão erro 500, porque as colunas novas ainda não existem.
 
 A 004 marca como confirmadas todas as contas que já existem (admin, donos, funcionários); sem isso ninguém entraria depois do deploy. Essa marcação só acontece na primeira execução, enquanto a tabela `email_verifications` está vazia. Rodar de novo depois não confirma cadastros novos por engano.
 
@@ -78,6 +81,7 @@ A 004 marca como confirmadas todas as contas que já existem (admin, donos, func
 - Funcionários criados pelo dono entram já confirmados.
 - Redefinir a senha pelo link do email também confirma o email.
 - Trocar ou redefinir a senha encerra as outras sessões abertas. A sessão de quem trocou continua.
+- Trocar o email (`PUT /api/auth/me`) exige a senha atual. O link vai para o email novo, e o antigo recebe só um aviso. O login continua com o email antigo até a confirmação. O limite é o mesmo do reenvio: 3 pedidos a cada 15 minutos por IP e 1 por minuto por conta.
 
 ## 5. Deploys seguintes
 
