@@ -151,7 +151,7 @@ export default function AdminDashboard()
                             <Building2 size={20} className="text-brand-purple" />
                             Cadastros Recentes
                         </h3>
-                        <Link to="/admin/users" className="text-brand-purple hover:text-brand-blue text-sm flex items-center gap-1">
+                        <Link to="/admin/usuarios" className="text-brand-purple hover:text-brand-blue text-sm flex items-center gap-1">
                             Ver todos <ChevronRight size={16} />
                         </Link>
                     </div>

@@ -30,29 +30,38 @@ const NOTIFICATION_STYLES =
     },
 };
 
+/**
+ * Toast stack, always horizontally centered.
+ * - Phones (<sm): top, below the safe area. Modals there are full-screen sheets with "Salvar" at the bottom and the booking flow
+ *   has a sticky "Continuar" bar, so a bottom toast would cover the main action.
+ * - sm+: bottom center, above the safe area.
+ * The live region stays mounted so screen readers announce new messages; errors use role="alert".
+ */
 export default function NotificationToast() 
 {
     const { notifications, removeNotification } = useNotification();
 
-    if (notifications.length === 0) return null;
-
     return (
-        <div className="fixed bottom-6 right-4 z-100 flex flex-col gap-3 w-full max-w-md px-4">
+        <div aria-live="polite"
+            className="pointer-events-none fixed inset-x-4 z-100 mx-auto flex max-w-md flex-col gap-3
+                top-[calc(0.75rem+env(safe-area-inset-top))] sm:top-auto sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]">
             {notifications.map(notification => 
             {
                 const style = NOTIFICATION_STYLES[notification.type] || NOTIFICATION_STYLES.error;
                 const Icon = style.icon;
 
                 return (
-                    <div key={notification.id} className={`${style.bg} rounded-lg p-4 shadow-lg animate-slide-in flex items-center justify-center gap-3`}>
-                        <Icon size={20} className={`${style.text} shrink-0 mt-0.5`} />
+                    <div key={notification.id} role={notification.type === 'error' ? 'alert' : 'status'}
+                        className={`${style.bg} ${style.text} pointer-events-auto flex items-start gap-3 rounded-xl py-3 pl-4 pr-2 shadow-lg shadow-black/40 animate-toast-in`}>
+                        <Icon size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
                         
-                        <p className={`${style.text} font-bold flex-1`}>
+                        <p className="min-w-0 flex-1 py-px text-left text-sm font-semibold leading-snug break-words sm:text-base">
                             {notification.message}
                         </p>
                         
-                        <button onClick={() => removeNotification(notification.id)} className={`${style.text} hover:opacity-70 transition-opacity shrink-0`}>
-                            <X size={16} />
+                        <button type="button" onClick={() => removeNotification(notification.id)} aria-label="Fechar aviso"
+                            className="-my-1.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                            <X size={16} aria-hidden="true" />
                         </button>
                     </div>
                 );

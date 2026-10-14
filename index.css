@@ -69,25 +69,29 @@ a, button, [role="button"], input, select, textarea, label {
     touch-action: manipulation;
 }
 
+/* color-scheme: dark (root) already draws these icons light; an extra invert() turned them black on the dark fields */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
   cursor: pointer;
 }
 
-@keyframes slide-in {
-    from {
-        opacity: 0;
-        transform: translateX(100%);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+/* Toasts: drop in from above on phones (stack at the top), rise from below on sm+ (stack at the bottom) */
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(var(--toast-from, -0.75rem)) scale(0.98); }
+    to { opacity: 1; transform: none; }
 }
 
-.animate-slide-in {
-    animation: slide-in 0.3s ease-out;
+.animate-toast-in {
+    animation: toast-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 40rem) {
+    .animate-toast-in { --toast-from: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-toast-in { animation-name: fade-in-only; }
+    @keyframes fade-in-only { from { opacity: 0; } to { opacity: 1; } }
 }
 /* Tables that become stacked cards on phones (<768px). Add className="table-cards" to the <table>
    and data-label="Coluna" to each body <td>; an empty data-label hides the caption (e.g. actions). */

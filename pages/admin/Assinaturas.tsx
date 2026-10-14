@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts';
 import { useApi } from '@/hooks/useApi';
 
@@ -24,6 +25,18 @@ export default function AdminAssinaturas()
     const [selectedSub, setSelectedSub] = useState(null);
     const [formData, setFormData] = useState({ planId: '', status: '', nextPaymentAt: '' });
     const [saving, setSaving] = useState(false);
+
+    // ?status=OVERDUE (link do dashboard) filtra a lista; os cards de resumo e o select escrevem no mesmo parâmetro
+    const [searchParams, setSearchParams] = useSearchParams();
+    const rawStatus = searchParams.get('status')?.toUpperCase() ?? '';
+    const statusFilter = rawStatus in SUBSCRIPTION_STATUS_CONFIG ? rawStatus : '';
+    const setStatusFilter = (status: string) =>
+    {
+        const next = new URLSearchParams(searchParams);
+        if (status) next.set('status', status); else next.delete('status');
+        setSearchParams(next, { replace: true });
+    };
+    const visibleSubscriptions = statusFilter ? subscriptions.filter(s => s.status === statusFilter) : subscriptions;
 
     useEffect(() => { loadData(); }, []);
 
@@ -88,8 +101,16 @@ export default function AdminAssinaturas()
 
     return (
         <div>
-            <div className="flex flex-col gap-4 md:flex-row md:gap-0 justify-between items-center mb-8">
+            <div className="flex flex-col gap-4 md:flex-row justify-between md:items-center mb-8">
                 <h1 className="text-3xl font-bold">Assinaturas</h1>
+
+                <label className="flex flex-col gap-1 text-sm text-brand-gray md:flex-row md:items-center md:gap-3">
+                    Filtrar por status
+                    <Select variant="dark" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full md:w-56">
+                        <option value="">Todos</option>
+                        {Object.entries(SUBSCRIPTION_STATUS_CONFIG).map(([status, config]) => <option key={status} value={status}>{config.label}</option>)}
+                    </Select>
+                </label>
             </div>
 
             {/* Cards de Resumo */}
@@ -97,22 +118,35 @@ export default function AdminAssinaturas()
                 {Object.entries(SUBSCRIPTION_STATUS_CONFIG).map(([status, config]) => {
                     const count = subscriptions.filter(s => s.status === status).length;
                     const Icon = config.icon;
+                    const active = statusFilter === status;
                     return (
-                        <div 
+                        <button
                             key={status}
-                            className={`
-                                bg-brand-dark p-4 rounded-xl cursor-pointer transition-all border border-transparent hover:border-white/20
-                            `}
+                            type="button"
+                            onClick={() => setStatusFilter(active ? '' : status)}
+                            aria-pressed={active}
+                            className={`bg-brand-dark p-4 rounded-xl text-left transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple
+                                ${active ? 'border-brand-purple' : 'border-transparent hover:border-white/20'}`}
                         >
                             <div className="flex items-center gap-2 mb-2">
                                 <Icon size={16} className={config.color.split(' ')[1]} />
                                 <span className="text-brand-gray text-sm">{config.label}</span>
                             </div>
                             <p className="text-2xl font-bold text-white">{count}</p>
-                        </div>
+                        </button>
                     );
                 })}
             </div>
+
+            {statusFilter && (
+                <div className="mb-4 flex flex-wrap items-center gap-x-3 text-sm text-brand-gray" aria-live="polite">
+                    <span>Mostrando {visibleSubscriptions.length} {visibleSubscriptions.length === 1 ? 'assinatura' : 'assinaturas'} com status <strong className="text-white">{SUBSCRIPTION_STATUS_CONFIG[statusFilter].label}</strong></span>
+                    <button type="button" onClick={() => setStatusFilter('')}
+                        className="inline-flex min-h-11 items-center rounded-sm font-semibold text-brand-purple hover:text-brand-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple">
+                        Limpar filtro
+                    </button>
+                </div>
+            )}
 
             {/* Tabela */}
             <div className="md:bg-brand-dark rounded-xl md:overflow-hidden">
@@ -128,7 +162,7 @@ export default function AdminAssinaturas()
                         </tr>
                     </thead>
                     <tbody>
-                        {subscriptions.map(sub => {
+                        {visibleSubscriptions.map(sub => {
                             const statusConfig = SUBSCRIPTION_STATUS_CONFIG[sub.status] || SUBSCRIPTION_STATUS_CONFIG.PENDING;
                             const StatusIcon = statusConfig.icon;
                             return (
@@ -170,9 +204,9 @@ export default function AdminAssinaturas()
                     </tbody>
                 </table>
 
-                {subscriptions.length === 0 && (
+                {visibleSubscriptions.length === 0 && (
                     <div className="text-center py-12 text-brand-gray">
-                        Nenhuma assinatura encontrada
+                        {statusFilter ? 'Nenhuma assinatura com esse status' : 'Nenhuma assinatura encontrada'}
                     </div>
                 )}
             </div>

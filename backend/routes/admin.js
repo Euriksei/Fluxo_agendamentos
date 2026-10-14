@@ -4,8 +4,20 @@ import pool from '../config/database.js';
 
 import { authenticateToken, requireAdmin } from '../middlewares/authentication.js';
 import { toLocalDateString } from '../utils/date.js';
+import asaasService from '../services/asaas.js';
 
 const router = express.Router();
+
+const VALID_STATUSES = ['ACTIVE', 'PENDING', 'TRIAL', 'OVERDUE', 'SUSPENDED', 'CANCELLED'];
+
+// 'YYYY-MM-DD' de um dia que existe no calendário
+const isValidDateString = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && toLocalDateString(new Date(value + 'T00:00:00')) === value;
+
+// Barbearias (donos) com a assinatura mais recente: a mesma forma serve para a lista e para a linha atualizada após trocar o plano
+const BARBERSHOPS_QUERY = `SELECT u.id, u.name, u.shop, u.email, u.role, u.created_at, s.id as subscriptionId, s.status as subscriptionStatus, s.nextPaymentAt, s.asaasSubscriptionId,
+    p.id as planId, p.name as planName, p.slug as planSlug, (SELECT COUNT(*) FROM users WHERE userId = u.id) as employeeCount FROM users u
+        LEFT JOIN subscriptions s ON s.id = (SELECT MAX(id) FROM subscriptions WHERE userId = u.id) LEFT JOIN plans p ON s.planId = p.id
+            WHERE u.role = 'BARBER' AND u.userId IS NULL`;
 
 router.use(authenticateToken);
 router.use(requireAdmin);
@@ -46,9 +58,7 @@ router.get('/barbershops', async (req, res) =>
 {
     try 
     {
-        const [barbershops] = await pool.query(`SELECT u.id, u.name, u.shop, u.email, u.role, u.created_at, s.status as subscriptionStatus, s.nextPaymentAt,
-            p.name as planName, p.slug as planSlug, (SELECT COUNT(*) FROM users WHERE userId = u.id) as employeeCount FROM users u LEFT JOIN subscriptions s ON u.id = s.userId 
-                LEFT JOIN plans p ON s.planId = p.id WHERE u.role = 'BARBER' AND u.userId IS NULL ORDER BY u.created_at DESC`);
+        const [barbershops] = await pool.query(`${BARBERSHOPS_QUERY} ORDER BY u.created_at DESC`);
 
         res.json(barbershops);
     } 
@@ -70,8 +80,6 @@ router.get('/barbershops/:id', async (req, res) => {
                 s.id as subscriptionId,
                 s.status as subscriptionStatus,
                 s.trialEndsAt,
-                s.currentPeriodStart,
-                s.currentPeriodEnd,
                 s.nextPaymentAt,
                 s.asaasCustomerId,
                 p.id as planId,
@@ -80,7 +88,7 @@ router.get('/barbershops/:id', async (req, res) => {
                 p.price as planPrice,
                 p.maxEmployees
             FROM users u
-            LEFT JOIN subscriptions s ON u.id = s.userId
+            LEFT JOIN subscriptions s ON s.id = (SELECT MAX(id) FROM subscriptions WHERE userId = u.id)
             LEFT JOIN plans p ON s.planId = p.id
             WHERE u.id = ?
         `, [id]);
@@ -176,7 +184,83 @@ router.post('/users/:id/reset-password', async (req, res) =>
     }
 });
 
-router.get('/plans', async (req, res) => 
+// Plano de qualquer barbearia (dono), com ou sem assinatura. Sem assinatura cria uma "concedida pelo admin" (sem vínculo com o Asaas).
+// Não mexe no Asaas: se houver cobrança vinculada, o valor cobrado continua o do plano antigo (o front mostra o aviso).
+router.put('/users/:id/plan', async (req, res) =>
+{
+    const connection = await pool.getConnection();
+
+    try
+    {
+        const userId = parseInt(req.params.id, 10);
+        const { planId, status, nextPaymentAt } = req.body || {};
+
+        if (!Number.isInteger(planId) || planId <= 0) return res.status(400).json({ error: 'Plano inválido' });
+        if (status != null && !VALID_STATUSES.includes(status)) return res.status(400).json({ error: 'Status inválido' });
+        if (nextPaymentAt != null && !isValidDateString(nextPaymentAt)) return res.status(400).json({ error: 'Data inválida' });
+
+        await connection.beginTransaction();
+
+        const [users] = await connection.query('SELECT id, role, userId FROM users WHERE id = ?', [userId]);
+        if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
+        if (users[0].role !== 'BARBER' || users[0].userId !== null) return res.status(400).json({ error: 'Só é possível alterar o plano do dono de uma barbearia' });
+
+        const [plans] = await connection.query('SELECT id, name, slug, maxEmployees, isActive FROM plans WHERE id = ?', [planId]);
+        if (plans.length === 0) return res.status(404).json({ error: 'Plano não encontrado' });
+        const plan = plans[0];
+        if (!plan.isActive) return res.status(400).json({ error: 'Plano inativo' });
+
+        const [subscriptions] = await connection.query(`SELECT s.id, s.status, s.asaasSubscriptionId, p.slug FROM subscriptions s JOIN plans p ON p.id = s.planId
+            WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1 FOR UPDATE`, [userId]);
+        const previous = subscriptions[0] || null;
+
+        const newStatus = status ?? previous?.status ?? 'ACTIVE';
+
+        if (!previous)
+        {
+            await connection.query('INSERT INTO subscriptions (userId, planId, status, nextPaymentAt) VALUES (?, ?, ?, ?)', [userId, planId, newStatus, nextPaymentAt ?? null]);
+        }
+        else
+        {
+            // pendingPlanId: um upgrade aguardando pagamento deixa de valer, o admin definiu o plano
+            await connection.query(`UPDATE subscriptions SET planId = ?, pendingPlanId = NULL, status = ?, nextPaymentAt = COALESCE(?, nextPaymentAt),
+                cancelledAt = IF(? = 'CANCELLED', cancelledAt, NULL) WHERE id = ?`, [planId, newStatus, nextPaymentAt ?? null, newStatus, previous.id]);
+        }
+
+        const warnings = [];
+
+        if (previous?.asaasSubscriptionId) warnings.push('Assinatura com cobrança no Asaas: o valor cobrado não muda');
+
+        const [[{ employees }]] = await connection.query('SELECT COUNT(*) AS employees FROM users WHERE userId = ?', [userId]);
+        if (employees > plan.maxEmployees)
+        {
+            const excess = employees - plan.maxEmployees;
+            warnings.push(`${excess} funcionário${excess > 1 ? 's' : ''} acima do limite do plano ${plan.name} (máximo ${plan.maxEmployees})`);
+        }
+
+        if (newStatus !== 'ACTIVE' && newStatus !== 'TRIAL') warnings.push(`Com status ${newStatus} a barbearia fica no plano grátis até a assinatura voltar a Ativo`);
+
+        await connection.commit();
+
+        console.log(`[admin] plano alterado: admin=${req.user.id} usuario=${userId} plano=${previous?.slug ?? 'sem assinatura'}->${plan.slug} status=${previous?.status ?? '-'}->${newStatus}${previous ? '' : ' (assinatura criada pelo admin)'}`);
+
+        const [rows] = await pool.query(`${BARBERSHOPS_QUERY} AND u.id = ?`, [userId]);
+
+        res.json({ barbershop: rows[0], created: !previous, warnings, ...(warnings.length > 0 && { warning: warnings.join('. ') }) });
+    }
+    catch (error)
+    {
+        console.error('Admin change plan error:', error);
+        res.status(500).json({ error: 'Erro ao alterar plano' });
+    }
+    finally
+    {
+        await connection.rollback().catch(() => {});
+        connection.release();
+    }
+});
+
+router.get('/plans', async (req, res) =>
 {
     try 
     {
@@ -353,7 +437,7 @@ router.get('/subscriptions/:id', async (req, res) =>
         }
 
         const sub = subscriptions[0];
-        sub.features = JSON.parse(sub.features || '[]');
+        if (typeof sub.features === 'string') sub.features = JSON.parse(sub.features || '[]');
 
         if (sub.asaasSubscriptionId) 
         {
@@ -384,15 +468,13 @@ router.put('/subscriptions/:id', async (req, res) =>
         const { id } = req.params;
         const { planId, status, nextPaymentAt } = req.body;
 
-        const validStatuses = ['ACTIVE', 'PENDING', 'TRIAL', 'OVERDUE', 'SUSPENDED', 'CANCELLED'];
-        if (status != null && !validStatuses.includes(status)) return res.status(400).json({ error: 'Status inválido' });
+        if (status != null && !VALID_STATUSES.includes(status)) return res.status(400).json({ error: 'Status inválido' });
 
         if (planId != null && (!Number.isInteger(planId) || planId <= 0)) return res.status(400).json({ error: 'Plano inválido' });
 
         if (nextPaymentAt != null)
         {
-            const validDate = typeof nextPaymentAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(nextPaymentAt) && toLocalDateString(new Date(nextPaymentAt + 'T00:00:00')) === nextPaymentAt;
-            if (!validDate) return res.status(400).json({ error: 'Data do próximo pagamento inválida' });
+            if (!isValidDateString(nextPaymentAt)) return res.status(400).json({ error: 'Data do próximo pagamento inválida' });
         }
 
         if (planId != null)
