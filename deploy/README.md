@@ -71,6 +71,16 @@ ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/flux
 ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/005_email_change.sql"
 ```
 
+**Migrations 006 e 007** (vêm com o vencimento do plano concedido e o CPF da conta): rode logo após o deploy da versão que as traz.
+
+```bash
+ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/006_subscription_expired.sql"
+ssh -i ~/.ssh/fluxo_vps root@179.236.75.179 "mariadb fluxodb < /home/deploy/fluxo/backend/migrations/007_user_cpf_cnpj.sql"
+```
+
+- **006** acrescenta o status EXPIRED. Plano concedido pelo admin (sem cobrança no Asaas) com data de validade vence sozinho no dia seguinte à data e cai para o grátis. Sem a 006, o acesso já cai para o grátis (calculado na hora), mas o status não fica gravado.
+- **007** cria `users.cpfCnpj`. O CPF/CNPJ é guardado depois de uma cobrança aceita e preenche o próximo pagamento. Sem a 007, nada quebra: o campo só não vem preenchido.
+
 A 005 vem com a troca de email: o email novo fica pendente até o link enviado para ele ser aberto. Se o servidor já tem a 003 e a 004, rode só a 005, logo após o deploy da versão que a traz. Até lá, cadastro, confirmação de email, reenvio e troca de email dão erro 500, porque as colunas novas ainda não existem.
 
 A 004 marca como confirmadas todas as contas que já existem (admin, donos, funcionários); sem isso ninguém entraria depois do deploy. Essa marcação só acontece na primeira execução, enquanto a tabela `email_verifications` está vazia. Rodar de novo depois não confirma cadastros novos por engano.

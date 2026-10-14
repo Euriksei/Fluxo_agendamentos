@@ -143,6 +143,9 @@ log "Aplicando migrations/004_email_verification.sql (idempotente; só a 1ª exe
 mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/004_email_verification.sql"
 log "Aplicando migrations/005_email_change.sql (idempotente)"
 mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/005_email_change.sql"
+log "Aplicando migrations/006_subscription_expired.sql e 007_user_cpf_cnpj.sql (idempotentes)"
+mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/006_subscription_expired.sql"
+mariadb "$DB_NAME" < "$APP_DIR/backend/migrations/007_user_cpf_cnpj.sql"
 
 PLANS=$(plans_count)
 [[ "$PLANS" == "4" ]] || die "esperava 4 planos, encontrei $PLANS"

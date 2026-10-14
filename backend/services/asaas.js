@@ -25,6 +25,21 @@ export const describeAsaasEnvironment = () =>
 
 const unavailable = () => { const error = new Error(UNAVAILABLE_MESSAGE); error.status = 502; return error; };
 
+// Erros do Asaas sobre os dados do pagador viram mensagem clara (o front mostra error.message); o resto segue a descrição do Asaas
+const FRIENDLY_ERRORS = [
+    { match: /cpf|cnpj/i, message: 'CPF ou CNPJ recusado pelo sistema de pagamento. Confira o número digitado.', code: 'INVALID_CPF_CNPJ' },
+    { match: /email/i, message: 'Email recusado pelo sistema de pagamento. Confira o email da sua conta.', code: 'INVALID_EMAIL' },
+    { match: /postalCode|cep/i, message: 'CEP inválido. Confira o CEP do titular.', code: 'INVALID_POSTAL_CODE' }
+];
+
+const friendlyAsaasError = (data) =>
+{
+    const first = data?.errors?.[0];
+    if (!first) return null;
+    const text = `${first.code || ''} ${first.description || ''}`;
+    return FRIENDLY_ERRORS.find((rule) => rule.match.test(text)) || null;
+};
+
 class AsaasService
 {
     async request(endpoint, options = {})
@@ -56,8 +71,10 @@ class AsaasService
             {
                 // 401/403 do Asaas é problema da nossa chave: não repassar (o front trata 401 como sessão expirada e desloga)
                 const isAuthError = response.status === 401 || response.status === 403;
-                const error = new Error(isAuthError ? UNAVAILABLE_MESSAGE : (data.errors?.[0]?.description || 'Erro na API ASAAS'));
+                const friendly = isAuthError ? null : friendlyAsaasError(data);
+                const error = new Error(isAuthError ? UNAVAILABLE_MESSAGE : (friendly?.message || data.errors?.[0]?.description || 'Erro na API ASAAS'));
                 error.status = isAuthError ? 502 : response.status;
+                if (friendly) error.code = friendly.code;
                 error.data = data;
                 throw error;
             }
@@ -73,11 +90,19 @@ class AsaasService
         }
     }
 
-    async findOrCreateCustomer(customerData) 
+    // Busca por CPF foi removida de propósito: o mesmo CPF pode existir em outro cadastro (outra barbearia ou CPF digitado errado) e a
+    // cobrança ficaria presa ao cliente de outro usuário. O cliente do dono é achado pelo id salvo ou pelo externalReference user_<id>.
+    async findCustomerByExternalReference(externalReference)
     {
-        const existing = await this.request(`/customers?cpfCnpj=${customerData.cpfCnpj}`);
-        if (existing.data && existing.data.length > 0) return existing.data[0];
-        return await this.createCustomer(customerData);
+        const result = await this.request(`/customers?externalReference=${encodeURIComponent(externalReference)}&limit=10`);
+        // Defesa extra: só aceita correspondência exata (filtro do Asaas não deve, mas não confiamos em prefixo)
+        return (result.data || []).find((c) => c.externalReference === externalReference && !c.deleted) || null;
+    }
+
+    // Asaas atualiza cliente com POST /customers/{id}; só os campos enviados mudam
+    async updateCustomer(customerId, changes)
+    {
+        return await this.request(`/customers/${encodeURIComponent(customerId)}`, { method: 'POST', body: JSON.stringify(changes) });
     }
 
     async createCustomer(customerData) 
@@ -101,7 +126,7 @@ class AsaasService
         });
     }
 
-    async getCustomer(customerId) { return await this.request(`/customers/${customerId}`); }
+    async getCustomer(customerId) { return await this.request(`/customers/${encodeURIComponent(customerId)}`); }
 
     async createSubscription(subscriptionData) 
     {

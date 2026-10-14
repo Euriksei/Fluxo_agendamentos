@@ -69,5 +69,6 @@ export const SUBSCRIPTION_STATUS_CONFIG =
     OVERDUE: { label: 'Inadimplente', color: 'bg-orange-500/20 text-orange-500', icon: Clock },
     CANCELLED: { label: 'Cancelado', color: 'bg-red-500/20 text-red-500', icon: X },
     PENDING: { label: 'Pendente', color: 'bg-yellow-500/20 text-yellow-500', icon: AlertCircle },
+    EXPIRED: { label: 'Vencido', color: 'bg-red-500/20 text-red-400', icon: Clock },
     NONE: { label: 'Sem Assinatura', color: 'bg-gray-500/20 text-gray-400', icon: X }
 };

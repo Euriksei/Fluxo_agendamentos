@@ -11,7 +11,10 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 
 import { SUBSCRIPTION_STATUS_CONFIG } from '@/types';
-import { formatarMoeda, formatarData } from '@/utils';
+import { formatarMoeda, formatarDia, diaISO, validadeConcedida } from '@/utils';
+
+// Granted by the admin (no Asaas billing, not the 7-day trial): nextPaymentAt is the plan's validity, not a billing date
+const isGranted = (sub) => !sub?.asaasSubscriptionId && !sub?.trialEndsAt;
 
 export default function AdminAssinaturas() 
 {
@@ -68,7 +71,7 @@ export default function AdminAssinaturas()
     const openModal = (sub) => 
     {
         setSelectedSub(sub);
-        setFormData({ planId: sub.planId?.toString() || '', status: sub.status || '', nextPaymentAt: sub.nextPaymentAt ? sub.nextPaymentAt.split('T')[0] : '' });
+        setFormData({ planId: sub.planId?.toString() || '', status: sub.status || '', nextPaymentAt: diaISO(sub.nextPaymentAt) });
         setModalAberto(true);
     };
 
@@ -184,8 +187,8 @@ export default function AdminAssinaturas()
                                             {statusConfig.label}
                                         </span>
                                     </td>
-                                    <td data-label="Próx. Pagamento" className="p-4 text-brand-gray text-sm">
-                                        {formatarData(sub.nextPaymentAt)}
+                                    <td data-label={isGranted(sub) ? 'Validade' : 'Próx. Pagamento'} className="p-4 text-brand-gray text-sm">
+                                        {!sub.nextPaymentAt ? (isGranted(sub) ? 'Sem vencimento' : '-') : isGranted(sub) ? validadeConcedida(sub.nextPaymentAt) : formatarDia(sub.nextPaymentAt)}
                                     </td>
                                     <td data-label="Valor" className="p-4 text-white font-medium">
                                         {formatarMoeda(sub.planPrice)}
@@ -248,7 +251,7 @@ export default function AdminAssinaturas()
                             </div>
 
                             <div>
-                                <label className="block text-sm text-brand-gray mb-1">Próximo Pagamento</label>
+                                <label className="block text-sm text-brand-gray mb-1">{isGranted(selectedSub) ? 'Válido até (plano concedido)' : 'Próximo Pagamento'}</label>
                                 <Input
                                     type="date"
                                     value={formData.nextPaymentAt}

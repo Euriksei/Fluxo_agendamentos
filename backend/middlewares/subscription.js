@@ -2,13 +2,44 @@ import pool from '../config/database.js';
 
 import { getOwnerId } from '../utils/user.js';
 import { getPlans } from '../utils/plans.js';
+import { toLocalDateString } from '../utils/date.js';
 
 const ADMIN_SUBSCRIPTION = { status: 'ACTIVE', plan: { slug: 'premium', maxEmployees: 999, features: ['services', 'agendas', 'appointments', 'employees', 'flows'] } };
 
-// Plano efetivo do dono: assinatura ACTIVE/TRIAL (não expirada) usa as features do plano; sem assinatura ou OVERDUE/SUSPENDED/CANCELLED/PENDING cai para o free
+// Plano concedido pelo admin = assinatura sem cobrança no Asaas e que não é o trial de 7 dias (trial tem trialEndsAt).
+// Nela, nextPaymentAt é a validade: vale até o fim desse dia (fuso do servidor); vazio = não vence.
+// Com asaasSubscriptionId, nextPaymentAt é a próxima cobrança e quem muda o status é o webhook: nunca vence por aqui.
+export const isGrantedSubscription = (sub) => Boolean(sub) && !sub.asaasSubscriptionId && !sub.trialEndsAt;
+
+export const toDateString = (value) => value instanceof Date ? toLocalDateString(value) : String(value).slice(0, 10);
+
+export const isGrantedExpired = (sub) => isGrantedSubscription(sub) && (sub.status === 'ACTIVE' || sub.status === 'TRIAL') && Boolean(sub.nextPaymentAt)
+    && toDateString(sub.nextPaymentAt) < toLocalDateString();
+
+// Sem cron: quem lê a assinatura chama isto antes. Idempotente (só pega concedidas ainda ACTIVE/TRIAL com a data já passada).
+// ownerId null = todas (listas do admin). Se a migration 006 (ENUM com EXPIRED) ainda não rodou, só loga: o resolveSubscription
+// também calcula o vencimento em memória, então o acesso já cai para o grátis mesmo sem o status gravado.
+export async function expireGrantedSubscriptions(ownerId = null, db = pool)
+{
+    try
+    {
+        const [result] = await db.query(`UPDATE subscriptions SET status = 'EXPIRED' WHERE status IN ('ACTIVE', 'TRIAL') AND asaasSubscriptionId IS NULL AND trialEndsAt IS NULL
+            AND nextPaymentAt IS NOT NULL AND nextPaymentAt < CURDATE()${ownerId ? ' AND userId = ?' : ''}`, ownerId ? [ownerId] : []);
+        return result.affectedRows;
+    }
+    catch (error)
+    {
+        console.error('[subscription] Falha ao marcar planos concedidos vencidos (migration 006 aplicada?):', error.message);
+        return 0;
+    }
+}
+
+// Plano efetivo do dono:assinatura ACTIVE/TRIAL (não expirada) usa as features do plano; sem assinatura ou OVERDUE/SUSPENDED/CANCELLED/PENDING cai para o free
 export async function resolveSubscription(ownerId) 
 {
     const plans = await getPlans();
+
+    await expireGrantedSubscriptions(ownerId);
 
     const [subscriptions] = await pool.query(`SELECT s.id, s.userId, s.planId, s.asaasSubscriptionId, s.asaasCustomerId, s.status, s.trialEndsAt, s.nextPaymentAt, 
         s.lastPaymentAt, s.cancelledAt, s.createdAt, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features FROM subscriptions s JOIN 
@@ -31,9 +62,10 @@ export async function resolveSubscription(ownerId)
     else 
     {
         const sub = subscriptions[0];
-        const isActive = sub.status === 'ACTIVE' || sub.status === 'TRIAL';
-        
-        let status = sub.status;
+        const grantedExpired = isGrantedExpired(sub);
+        const isActive = (sub.status === 'ACTIVE' || sub.status === 'TRIAL') && !grantedExpired;
+
+        let status = grantedExpired ? 'EXPIRED' : sub.status;
         if (sub.status === 'TRIAL' && sub.trialEndsAt) 
         {
             const trialEnd = new Date(sub.trialEndsAt);
@@ -71,6 +103,8 @@ export async function resolveSubscription(ownerId)
             trialEndsAt: sub.trialEndsAt,
             nextPaymentAt: sub.nextPaymentAt,
             lastPaymentAt: sub.lastPaymentAt,
+            grantedByAdmin: isGrantedSubscription(sub),
+            validUntil: isGrantedSubscription(sub) && sub.nextPaymentAt ? toDateString(sub.nextPaymentAt) : null,
             isLimited: !isActive || status === 'EXPIRED'
         };
     }

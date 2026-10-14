@@ -5,16 +5,19 @@ import pool from '../config/database.js';
 import { authenticateToken, requireAdmin } from '../middlewares/authentication.js';
 import { toLocalDateString } from '../utils/date.js';
 import asaasService from '../services/asaas.js';
+import { expireGrantedSubscriptions } from '../middlewares/subscription.js';
+import { getAccountDocument, maskDocument } from '../utils/user.js';
 
 const router = express.Router();
 
-const VALID_STATUSES = ['ACTIVE', 'PENDING', 'TRIAL', 'OVERDUE', 'SUSPENDED', 'CANCELLED'];
+const VALID_STATUSES = ['ACTIVE', 'PENDING', 'TRIAL', 'OVERDUE', 'SUSPENDED', 'CANCELLED', 'EXPIRED'];
 
 // 'YYYY-MM-DD' de um dia que existe no calendário
 const isValidDateString = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && toLocalDateString(new Date(value + 'T00:00:00')) === value;
 
 // Barbearias (donos) com a assinatura mais recente: a mesma forma serve para a lista e para a linha atualizada após trocar o plano
 const BARBERSHOPS_QUERY = `SELECT u.id, u.name, u.shop, u.email, u.role, u.created_at, s.id as subscriptionId, s.status as subscriptionStatus, s.nextPaymentAt, s.asaasSubscriptionId,
+    s.trialEndsAt, (s.id IS NOT NULL AND s.asaasSubscriptionId IS NULL AND s.trialEndsAt IS NULL) as grantedByAdmin,
     p.id as planId, p.name as planName, p.slug as planSlug, (SELECT COUNT(*) FROM users WHERE userId = u.id) as employeeCount FROM users u
         LEFT JOIN subscriptions s ON s.id = (SELECT MAX(id) FROM subscriptions WHERE userId = u.id) LEFT JOIN plans p ON s.planId = p.id
             WHERE u.role = 'BARBER' AND u.userId IS NULL`;
@@ -26,6 +29,8 @@ router.get('/stats', async (req, res) =>
 {
     try 
     {
+        await expireGrantedSubscriptions();
+
         const [totalUsers] = await pool.query('SELECT COUNT(*) as count FROM users WHERE role != "ADMIN"');
         const [totalBarbers] = await pool.query('SELECT COUNT(*) as count FROM users WHERE role = "BARBER"');
         const [totalEmployees] = await pool.query('SELECT COUNT(*) as count FROM users WHERE role = "EMPLOYEE"');
@@ -58,6 +63,8 @@ router.get('/barbershops', async (req, res) =>
 {
     try 
     {
+        await expireGrantedSubscriptions();
+
         const [barbershops] = await pool.query(`${BARBERSHOPS_QUERY} ORDER BY u.created_at DESC`);
 
         res.json(barbershops);
@@ -71,6 +78,8 @@ router.get('/barbershops', async (req, res) =>
 
 router.get('/barbershops/:id', async (req, res) => {
     try {
+        await expireGrantedSubscriptions();
+
         const { id } = req.params;
 
         // Busca o dono
@@ -81,6 +90,7 @@ router.get('/barbershops/:id', async (req, res) => {
                 s.status as subscriptionStatus,
                 s.trialEndsAt,
                 s.nextPaymentAt,
+                s.asaasSubscriptionId,
                 s.asaasCustomerId,
                 p.id as planId,
                 p.name as planName,
@@ -107,6 +117,7 @@ router.get('/barbershops/:id', async (req, res) => {
 
         res.json({
             ...owner,
+            cpfCnpjMasked: maskDocument(await getAccountDocument(owner.id)),
             employees
         });
     } catch (error) {
@@ -210,19 +221,38 @@ router.put('/users/:id/plan', async (req, res) =>
         const plan = plans[0];
         if (!plan.isActive) return res.status(400).json({ error: 'Plano inativo' });
 
+        // Concedido já vencido vira EXPIRED antes de ler o status anterior
+        await expireGrantedSubscriptions(userId, connection);
+
         const [subscriptions] = await connection.query(`SELECT s.id, s.status, s.asaasSubscriptionId, p.slug FROM subscriptions s JOIN plans p ON p.id = s.planId
             WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1 FOR UPDATE`, [userId]);
         const previous = subscriptions[0] || null;
 
-        const newStatus = status ?? previous?.status ?? 'ACTIVE';
+        // Sem cobrança no Asaas = plano concedido pelo admin: nextPaymentAt é a validade (vence sozinho no dia seguinte)
+        const granted = !previous?.asaasSubscriptionId;
+
+        // Renovar: EXPIRED volta para ACTIVE quando o admin não escolhe outro status
+        const newStatus = status ?? (previous && previous.status !== 'EXPIRED' ? previous.status : 'ACTIVE');
+
+        // Concedido: a validade é sempre a enviada agora (vazio/ausente = não vence) e não pode estar no passado.
+        // Com Asaas: nextPaymentAt é a próxima cobrança; só muda se vier uma data (o webhook é quem manda).
+        if (granted && nextPaymentAt && nextPaymentAt < toLocalDateString()) return res.status(400).json({ error: 'A validade precisa ser hoje ou uma data futura' });
+        const validUntil = granted ? (nextPaymentAt || null) : null;
 
         if (!previous)
         {
-            await connection.query('INSERT INTO subscriptions (userId, planId, status, nextPaymentAt) VALUES (?, ?, ?, ?)', [userId, planId, newStatus, nextPaymentAt ?? null]);
+            await connection.query('INSERT INTO subscriptions (userId, planId, status, nextPaymentAt) VALUES (?, ?, ?, ?)', [userId, planId, newStatus, validUntil]);
+        }
+        else if (granted)
+        {
+            // pendingPlanId: um upgrade aguardando pagamento deixa de valer, o admin definiu o plano.
+            // trialEndsAt: um trial de 7 dias que o admin troca por outro status passa a ser plano concedido
+            await connection.query(`UPDATE subscriptions SET planId = ?, pendingPlanId = NULL, status = ?, nextPaymentAt = ?,
+                trialEndsAt = IF(? = 'TRIAL', trialEndsAt, NULL), cancelledAt = IF(? = 'CANCELLED', cancelledAt, NULL) WHERE id = ?`,
+                [planId, newStatus, validUntil, newStatus, newStatus, previous.id]);
         }
         else
         {
-            // pendingPlanId: um upgrade aguardando pagamento deixa de valer, o admin definiu o plano
             await connection.query(`UPDATE subscriptions SET planId = ?, pendingPlanId = NULL, status = ?, nextPaymentAt = COALESCE(?, nextPaymentAt),
                 cancelledAt = IF(? = 'CANCELLED', cancelledAt, NULL) WHERE id = ?`, [planId, newStatus, nextPaymentAt ?? null, newStatus, previous.id]);
         }
@@ -386,6 +416,8 @@ router.get('/subscriptions', async (req, res) =>
 {
     try 
     {
+        await expireGrantedSubscriptions();
+
         const { status, planId, offset = 0, limit = 50 } = req.query;
 
         let query = `SELECT s.*, u.name as ownerName, u.shop, u.email, u.email as userEmail, p.name as planName, p.slug as planSlug, p.price as planPrice FROM subscriptions s JOIN users u 
@@ -422,6 +454,8 @@ router.get('/subscriptions/:id', async (req, res) =>
 {
     try 
     {
+        await expireGrantedSubscriptions();
+
         const { id } = req.params;
 
         const [subscriptions] = await pool.query(`

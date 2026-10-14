@@ -141,7 +141,7 @@ export function SubscriptionProvider({ children })
                 return { success: true, data };
             }
 
-            return { success: false, error: data.error };
+            return { success: false, error: data.error, code: data.code };
         } 
         catch (err) 
         {
@@ -173,7 +173,7 @@ export function SubscriptionProvider({ children })
                 return { success: true, data };
             }
 
-            return { success: false, error: data.error };
+            return { success: false, error: data.error, code: data.code };
         } 
         catch (err) 
         {
@@ -238,7 +238,7 @@ export function SubscriptionProvider({ children })
                 return { success: true, data };
             }
 
-            return { success: false, error: data.error };
+            return { success: false, error: data.error, code: data.code };
         } 
         catch (err) 
         {
@@ -302,7 +302,7 @@ export function SubscriptionProvider({ children })
                 return { success: true, data };
             }
 
-            return { success: false, error: data.error };
+            return { success: false, error: data.error, code: data.code };
         } 
         catch (err) 
         {

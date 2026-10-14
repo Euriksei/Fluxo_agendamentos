@@ -2,6 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 
 import { authenticateToken } from '../middlewares/authentication.js';
+import { resolveSubscription } from '../middlewares/subscription.js';
 
 import { getOwnerId } from '../utils/user.js';
 
@@ -29,6 +30,9 @@ router.get('/me', authenticateToken, async (req, res) =>
         const userId = req.user.id;
         const ownerId = await getOwnerId(userId);
 
+        // Mesma regra do middleware (trial expirado, plano concedido vencido); também grava o EXPIRED do concedido
+        const effective = await resolveSubscription(ownerId);
+
         const [subscriptions] = await pool.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features 
             FROM subscriptions s JOIN plans p ON s.planId = p.id WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1`, [ownerId]);
 
@@ -55,7 +59,10 @@ router.get('/me', authenticateToken, async (req, res) =>
                 maxEmployees: sub.maxEmployees,
                 features: typeof sub.features === 'string' ? JSON.parse(sub.features) : (sub.features || [])
             },
-            isLimited: sub.status !== 'ACTIVE' && sub.status !== 'TRIAL'
+            status: effective.status,
+            grantedByAdmin: effective.grantedByAdmin,
+            validUntil: effective.validUntil,
+            isLimited: effective.isLimited
         });
     } 
     catch (error) 

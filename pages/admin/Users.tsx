@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import ResponsiveModal from '@/components/ui/ResponsiveModal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import { diaISO, formatarDia, hojeLocal, validadeConcedida } from '@/utils';
 
 const STATUS_CONFIG = 
 {
@@ -17,12 +18,16 @@ const STATUS_CONFIG =
     CANCELLED: { label: 'Cancelado', color: 'bg-gray-500/20 text-gray-500' },
     PENDING: { label: 'Pendente', color: 'bg-yellow-500/20 text-yellow-500' },
     SUSPENDED: { label: 'Suspenso', color: 'bg-orange-500/20 text-orange-400' },
+    EXPIRED: { label: 'Vencido', color: 'bg-red-500/20 text-red-400' },
     NONE: { label: 'Sem assinatura', color: 'bg-gray-500/20 text-gray-400' }
 };
 
 const MODAL_TITLES = { edit: 'Editar Barbearia', password: 'Resetar Senha', details: 'Detalhes da Barbearia', plan: 'Alterar Plano' };
 
 const EMPTY_PLAN_FORM = { planId: '', status: '', nextPaymentAt: '' };
+
+// Granted by the admin = has a subscription with no Asaas billing and is not the 7-day trial; nextPaymentAt is then its validity
+const isGranted = (shop) => Boolean(shop?.subscriptionId || shop?.subscriptionStatus) && !shop?.asaasSubscriptionId && !shop?.trialEndsAt;
 
 // Phone card actions: same four modals as the desktop icon row, with a visible label under each icon
 const MOBILE_ACTIONS = [
@@ -94,7 +99,7 @@ export default function Users()
         else if (tipo === 'plan')
         {
             setPlanWarning(null);
-            setPlanForm({ ...EMPTY_PLAN_FORM, planId: shop.planId ? String(shop.planId) : '' });
+            setPlanForm({ ...EMPTY_PLAN_FORM, planId: shop.planId ? String(shop.planId) : '', nextPaymentAt: isGranted(shop) ? diaISO(shop.nextPaymentAt) : '' });
 
             if (plans.length === 0)
             {
@@ -136,7 +141,9 @@ export default function Users()
 
         try
         {
-            const body = { planId: Number(planForm.planId), ...(planForm.status && { status: planForm.status }), ...(planForm.nextPaymentAt && { nextPaymentAt: planForm.nextPaymentAt }) };
+            // Without Asaas billing the date is the validity and is always sent (empty = no expiry); with Asaas it is not editable here
+            const body = { planId: Number(planForm.planId), ...(planForm.status && { status: planForm.status }),
+                ...(!selectedShop.asaasSubscriptionId && { nextPaymentAt: planForm.nextPaymentAt || null }) };
             const data = await authRequest(`/api/admin/users/${selectedShop.id}/plan`, { method: 'PUT', body: JSON.stringify(body) });
 
             setBarbershops(prev => prev.map(b => b.id === selectedShop.id ? { ...b, ...data.barbershop } : b));
@@ -249,6 +256,7 @@ export default function Users()
                                 <div className="min-w-0">
                                     <dt className="text-xs text-brand-gray">Plano</dt>
                                     <dd className="truncate text-white">{shop.planName || 'Grátis'}</dd>
+                                    {isGranted(shop) && shop.nextPaymentAt && <dd className="text-xs text-brand-gray">{validadeConcedida(shop.nextPaymentAt)}</dd>}
                                 </div>
                                 <div className="min-w-0">
                                     <dt className="text-xs text-brand-gray">Funcionários</dt>
@@ -311,6 +319,7 @@ export default function Users()
                                     <td data-label="Email" className="p-4 text-brand-gray text-sm">{shop.email}</td>
                                     <td data-label="Plano" className="p-4">
                                         <span className="text-white text-sm">{shop.planName || 'Grátis'}</span>
+                                        {isGranted(shop) && shop.nextPaymentAt && <span className="block text-xs text-brand-gray">{validadeConcedida(shop.nextPaymentAt)}</span>}
                                     </td>
                                     <td data-label="Status" className="p-4">
                                         <span className={`whitespace-nowrap text-xs px-2 py-1 rounded ${statusConfig.color}`}>
@@ -507,16 +516,27 @@ export default function Users()
                                     <div>
                                         <label htmlFor="plan-status" className="block text-sm text-brand-gray mb-1">Status (opcional)</label>
                                         <Select id="plan-status" value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value })} variant="dark" fullWidth>
-                                            <option value="">{selectedShop.subscriptionStatus ? `Manter (${STATUS_CONFIG[selectedShop.subscriptionStatus]?.label || selectedShop.subscriptionStatus})` : 'Ativo (padrão)'}</option>
-                                            {['ACTIVE', 'TRIAL', 'PENDING', 'OVERDUE', 'SUSPENDED', 'CANCELLED'].map(key => (
+                                            <option value="">{!selectedShop.subscriptionStatus ? 'Ativo (padrão)' : selectedShop.subscriptionStatus === 'EXPIRED' ? 'Reativar (Ativo)'
+                                                : `Manter (${STATUS_CONFIG[selectedShop.subscriptionStatus]?.label || selectedShop.subscriptionStatus})`}</option>
+                                            {['ACTIVE', 'TRIAL', 'PENDING', 'OVERDUE', 'SUSPENDED', 'CANCELLED', 'EXPIRED'].map(key => (
                                                 <option key={key} value={key}>{STATUS_CONFIG[key].label}</option>
                                             ))}
                                         </Select>
                                     </div>
 
                                     <div>
-                                        <label htmlFor="plan-date" className="block text-sm text-brand-gray mb-1">Próximo pagamento / renovação (opcional)</label>
-                                        <Input id="plan-date" type="date" value={planForm.nextPaymentAt} onChange={e => setPlanForm({ ...planForm, nextPaymentAt: e.target.value })} fullWidth />
+                                        {!selectedShop.asaasSubscriptionId ? (
+                                            <>
+                                                <label htmlFor="plan-date" className="block text-sm text-brand-gray mb-1">Válido até (opcional)</label>
+                                                <Input id="plan-date" type="date" min={hojeLocal()} value={planForm.nextPaymentAt} aria-describedby="plan-date-hint"
+                                                    onChange={e => setPlanForm({ ...planForm, nextPaymentAt: e.target.value })} fullWidth />
+                                                <p id="plan-date-hint" className="mt-1 text-xs text-brand-gray">
+                                                    Vale até o fim desse dia; depois a barbearia volta para o plano grátis. Vazio = sem vencimento.
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <p className="text-xs text-brand-gray">A próxima cobrança é definida pelo Asaas e não muda por aqui.</p>
+                                        )}
                                     </div>
 
                                     {planWarning && (
@@ -570,6 +590,12 @@ export default function Users()
                                                     {new Date(selectedShop.created_at).toLocaleDateString('pt-BR')}
                                                 </p>
                                             </div>
+                                            {selectedShop.cpfCnpjMasked && (
+                                                <div>
+                                                    <p className="text-brand-gray">CPF/CNPJ</p>
+                                                    <p className="text-white">{selectedShop.cpfCnpjMasked}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -594,9 +620,9 @@ export default function Users()
                                             </div>
                                             {selectedShop.nextPaymentAt && (
                                                 <div>
-                                                    <p className="text-brand-gray">Próximo Pagamento</p>
+                                                    <p className="text-brand-gray">{isGranted(selectedShop) ? 'Validade do plano' : 'Próximo Pagamento'}</p>
                                                     <p className="text-white">
-                                                        {new Date(selectedShop.nextPaymentAt).toLocaleDateString('pt-BR')}
+                                                        {isGranted(selectedShop) ? validadeConcedida(selectedShop.nextPaymentAt) : formatarDia(selectedShop.nextPaymentAt)}
                                                     </p>
                                                 </div>
                                             )}

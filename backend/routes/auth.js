@@ -8,10 +8,10 @@ import pool from '../config/database.js';
 import { authenticateToken, requireAdmin, signUserToken } from '../middlewares/authentication.js';
 
 import { validateEmail, validatePassword, PASSWORD_MIN_LENGTH } from '../utils/validations.js';
-import { getOwnerId, generateSlug } from '../utils/user.js';
+import { getOwnerId, generateSlug, getAccountDocument } from '../utils/user.js';
 import { getPlans } from '../utils/plans.js';
 import { sendPasswordResetEmail, sendEmailVerificationEmail, sendEmailChangeEmail, sendEmailChangeNotice } from '../utils/mailer.js';
-import { ownerHasFeature } from '../middlewares/subscription.js';
+import { ownerHasFeature, expireGrantedSubscriptions, isGrantedExpired, isGrantedSubscription, toDateString } from '../middlewares/subscription.js';
 
 const router = express.Router();
 
@@ -420,7 +420,7 @@ router.get('/me', async (req, res) =>
 {
     try 
     {
-        const [users] = await pool.query('SELECT id, name, shop, role, slug FROM users WHERE id = ?', [req.user.id]);
+        const [users] = await pool.query('SELECT id, name, shop, email, role, slug FROM users WHERE id = ?', [req.user.id]);
         if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
 
         const userId = req.user.id;
@@ -433,7 +433,10 @@ router.get('/me', async (req, res) =>
             if (ownerData.length > 0) ownerSlug = ownerData[0].slug;
         }
 
-        const [subscriptions] = await pool.query(`SELECT s.id, s.userId, s.planId, s.asaasSubscriptionId, s.asaasCustomerId, s.status, s.trialEndsAt, s.nextPaymentAt, 
+        // Plano concedido pelo admin com validade vencida vira EXPIRED antes de montar o plano
+        await expireGrantedSubscriptions(ownerId);
+
+        const [subscriptions] = await pool.query(`SELECT s.id, s.userId, s.planId, s.asaasSubscriptionId, s.asaasCustomerId, s.status, s.trialEndsAt, s.nextPaymentAt,
             s.lastPaymentAt, s.cancelledAt, s.createdAt, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features FROM subscriptions s JOIN 
                 plans p ON s.planId = p.id WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1`, [ownerId]);
 
@@ -457,9 +460,10 @@ router.get('/me', async (req, res) =>
         else 
         {
             const sub = subscriptions[0];
-            const isActive = sub.status === 'ACTIVE' || sub.status === 'TRIAL';
+            const grantedExpired = isGrantedExpired(sub);
+            const isActive = (sub.status === 'ACTIVE' || sub.status === 'TRIAL') && !grantedExpired;
 
-            let status = sub.status;
+            let status = grantedExpired ? 'EXPIRED' : sub.status;
             let trialDaysRemaining = null;
             
             if (sub.status === 'TRIAL' && sub.trialEndsAt) 
@@ -510,12 +514,15 @@ router.get('/me', async (req, res) =>
                 trialEndsAt: sub.trialEndsAt,
                 trialDaysRemaining: trialDaysRemaining,
                 nextPaymentAt: sub.nextPaymentAt,
+                grantedByAdmin: isGrantedSubscription(sub),
+                validUntil: isGrantedSubscription(sub) && sub.nextPaymentAt ? toDateString(sub.nextPaymentAt) : null,
                 lastPaymentAt: sub.lastPaymentAt,
                 isLimited: !isActive || status === 'EXPIRED'
             };
         }
 
-        res.json({ user: { ...users[0], ownerSlug }, subscription });
+        // CPF/CNPJ só do próprio usuário (preenche o formulário de pagamento); null sem a migration 007
+        res.json({ user: { ...users[0], ownerSlug, cpfCnpj: await getAccountDocument(req.user.id) }, subscription });
     } 
     catch (error) 
     {
@@ -644,7 +651,7 @@ router.get('/users', async (req, res) =>
 {
     try 
     {
-        const [users] = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
+        const [users] = await pool.query('SELECT id, userId, name, shop, slug, email, role, emailVerifiedAt, created_at, updated_at FROM users ORDER BY created_at DESC');
         res.json(users);
     } 
     catch (error) 

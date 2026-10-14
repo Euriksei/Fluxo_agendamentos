@@ -2,12 +2,13 @@ import express from 'express';
 import pool from '../config/database.js';
 
 import { authenticateToken, requireOwner } from '../middlewares/authentication.js';
-import { resolveSubscription } from '../middlewares/subscription.js';
+import { resolveSubscription, expireGrantedSubscriptions, isGrantedSubscription, toDateString } from '../middlewares/subscription.js';
 import { getPlans } from '../utils/plans.js';
 
-import { getOwnerId } from '../utils/user.js';
+import { getOwnerId, getAccountDocument, saveAccountDocument } from '../utils/user.js';
 import { centavosParaReais } from '../utils/currency.js';
 import { toLocalDateString } from '../utils/date.js';
+import { validateCpfCnpj } from '../utils/validations.js';
 
 import asaasService from '../services/asaas.js';
 
@@ -50,6 +51,65 @@ async function saveSubscription(connection, ownerId, { planId, asaasSubscription
     }
 
     return old.id;
+}
+
+// Pagador validado antes de qualquer chamada ao Asaas: nome obrigatório, CPF/CNPJ real (dígitos verificadores) e email SEMPRE o da conta do
+// dono (o do body é ignorado, para a cobrança e os avisos do Asaas irem para quem é dono da conta). role: 'payer' (PIX/boleto) | 'holder' (cartão)
+function buildPayer(source, user, role = 'payer')
+{
+    const name = typeof source?.name === 'string' ? source.name.trim() : '';
+    if (!name) return { error: role === 'holder' ? 'Informe o nome do titular do cartão' : 'Informe o nome completo de quem vai pagar' };
+
+    const doc = validateCpfCnpj(source?.cpfCnpj);
+    if (!doc.valid) return { error: role === 'holder' ? `${doc.error} do titular do cartão` : doc.error };
+
+    const onlyDigits = (value) => (value ? String(value).replace(/\D/g, '') : undefined);
+
+    return {
+        payer: {
+            name,
+            email: user.email,
+            cpfCnpj: doc.digits,
+            phone: onlyDigits(source.phone),
+            mobilePhone: onlyDigits(source.mobilePhone),
+            postalCode: onlyDigits(source.postalCode),
+            address: source.address,
+            addressNumber: source.addressNumber,
+            addressComplement: source.addressComplement,
+            province: source.province
+        }
+    };
+}
+
+// Cliente do Asaas DESTE dono, nunca o de outro usuário achado pelo CPF:
+// 1º o asaasCustomerId já salvo nas assinaturas dele (se ainda for dele: externalReference user_<id> e não apagado);
+// 2º o cliente com externalReference user_<id>; 3º cria um novo. Se os dados mudaram, atualiza o cliente antes de cobrar.
+const CUSTOMER_SYNC_FIELDS = ['name', 'email', 'cpfCnpj', 'phone', 'mobilePhone', 'postalCode', 'addressNumber'];
+
+async function resolveAsaasCustomer(connection, ownerId, payer)
+{
+    const externalReference = `user_${ownerId}`;
+    let customer = null;
+
+    const [saved] = await connection.query('SELECT asaasCustomerId FROM subscriptions WHERE userId = ? AND asaasCustomerId IS NOT NULL ORDER BY id DESC LIMIT 1', [ownerId]);
+    if (saved.length > 0)
+    {
+        customer = await asaasService.getCustomer(saved[0].asaasCustomerId).catch((error) => { if (error.status === 404) return null; throw error; });
+        // Legado: a busca antiga por CPF podia ter gravado aqui o cliente de outro usuário
+        if (customer && (customer.deleted || customer.externalReference !== externalReference)) customer = null;
+    }
+
+    if (!customer) customer = await asaasService.findCustomerByExternalReference(externalReference);
+    if (!customer) return asaasService.createCustomer({ ...payer, externalReference });
+
+    const normalize = (field, value) => (value == null ? '' : ['name', 'email'].includes(field) ? String(value).trim().toLowerCase() : String(value).replace(/\D/g, ''));
+    const changes = {};
+    for (const field of CUSTOMER_SYNC_FIELDS)
+    {
+        if (payer[field] && normalize(field, payer[field]) !== normalize(field, customer[field])) changes[field] = payer[field];
+    }
+
+    return Object.keys(changes).length > 0 ? asaasService.updateCustomer(customer.id, changes) : customer;
 }
 
 const ASAAS_WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN;
@@ -159,7 +219,9 @@ router.get('/me', async (req, res) =>
         const userId = req.user.id;
         const ownerId = await getOwnerId(userId);
 
-        const [subscriptions] = await pool.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features, 
+        await expireGrantedSubscriptions(ownerId);
+
+        const [subscriptions] = await pool.query(`SELECT s.*, p.name as planName, p.slug as planSlug, p.price as planPrice, p.maxEmployees, p.features,
             pp.name as pendingPlanName, pp.slug as pendingPlanSlug, pp.price as pendingPlanPrice FROM subscriptions s 
             JOIN plans p ON s.planId = p.id LEFT JOIN plans pp ON s.pendingPlanId = pp.id WHERE s.userId = ? ORDER BY s.id DESC LIMIT 1`, [ownerId]);
 
@@ -171,6 +233,7 @@ router.get('/me', async (req, res) =>
 
             return res.json({
                 status: 'NONE',
+                accountCpfCnpj: await getAccountDocument(ownerId),
                 plan: basicPlan[0] ? { ...basicPlan[0], features: features } : null,
                 contractedPlan: null,
                 pendingPlan: null,
@@ -188,8 +251,15 @@ router.get('/me', async (req, res) =>
         const freePlan = (await getPlans()).free;
         const contractedPlan = { id: sub.planId, name: sub.planName, slug: sub.planSlug, price: sub.planPrice, maxEmployees: sub.maxEmployees, features };
 
+        const granted = isGrantedSubscription(sub);
+
         res.json({
             ...sub,
+            // Concedido vencido: EXPIRED mesmo se o UPDATE não pôde gravar (resolveSubscription calcula em memória)
+            status: granted && effective.status === 'EXPIRED' ? 'EXPIRED' : sub.status,
+            grantedByAdmin: granted,
+            validUntil: granted && sub.nextPaymentAt ? toDateString(sub.nextPaymentAt) : null,
+            accountCpfCnpj: await getAccountDocument(ownerId),
             plan: { ...contractedPlan, features: effective.plan.features, maxEmployees: effective.isLimited ? (freePlan?.maxEmployees ?? 0) : sub.maxEmployees },
             contractedPlan,
             pendingPlan: sub.pendingPlanId ? { id: sub.pendingPlanId, name: sub.pendingPlanName, slug: sub.pendingPlanSlug, price: sub.pendingPlanPrice } : null,
@@ -217,6 +287,9 @@ router.post('/', requireOwner, async (req, res) =>
         const { planId, billingType, customerData } = req.body;
         if (!planId || !billingType) return res.status(400).json({ error: 'Plano e tipo de cobrança são obrigatórios' });
 
+        // Plano concedido pelo admin já vencido deixa de contar como ativo (a linha é reaproveitada pelo saveSubscription)
+        await expireGrantedSubscriptions(ownerId, connection);
+
         const [existingSub] = await connection.query('SELECT id FROM subscriptions WHERE userId = ? AND status IN ("ACTIVE", "TRIAL")', [ownerId]);
         if (existingSub.length > 0) return res.status(400).json({ error: 'Já existe uma assinatura ativa para este usuário' });
 
@@ -228,18 +301,10 @@ router.post('/', requireOwner, async (req, res) =>
         if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
         const user = users[0];
 
-        const asaasCustomer = await asaasService.findOrCreateCustomer({
-            name: customerData?.name || user.name,
-            email: customerData?.email || user.email,
-            cpfCnpj: customerData?.cpfCnpj,
-            phone: customerData?.phone,
-            mobilePhone: customerData?.mobilePhone,
-            postalCode: customerData?.postalCode,
-            address: customerData?.address,
-            addressNumber: customerData?.addressNumber,
-            province: customerData?.province,
-            externalReference: `user_${ownerId}`
-        });
+        const { payer, error: payerError } = buildPayer(customerData, user);
+        if (payerError) return res.status(400).json({ error: payerError, code: 'INVALID_PAYER' });
+
+        const asaasCustomer = await resolveAsaasCustomer(connection, ownerId, payer);
 
         const formattedValue = centavosParaReais(plan.price);
 
@@ -259,6 +324,9 @@ router.post('/', requireOwner, async (req, res) =>
 
         const subscriptionId = await saveSubscription(connection, ownerId, { planId: plan.id, asaasSubscriptionId: asaasSubscription.id, asaasCustomerId: asaasCustomer.id,
             status: 'PENDING', nextPaymentAt: formattedDueDate });
+
+        // Documento validado e aceito pelo Asaas: fica na conta para preencher a próxima cobrança
+        await saveAccountDocument(ownerId, payer.cpfCnpj, connection);
 
         await connection.commit();
 
@@ -293,7 +361,7 @@ router.post('/', requireOwner, async (req, res) =>
     {
         await connection.rollback();
         console.error('Create subscription error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao criar assinatura' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao criar assinatura', ...(error.code && { code: error.code }) });
     } 
     finally 
     {
@@ -321,6 +389,9 @@ router.post('/credit-card', requireOwner, async (req, res) =>
             return res.status(400).json({ error: 'Todos os dados do cartão são obrigatórios' });
         }
 
+        // Plano concedido pelo admin já vencido deixa de contar como ativo (a linha é reaproveitada pelo saveSubscription)
+        await expireGrantedSubscriptions(ownerId, connection);
+
         const [existingSub] = await connection.query('SELECT id FROM subscriptions WHERE userId = ? AND status IN ("ACTIVE", "TRIAL")', [ownerId]);
         if (existingSub.length > 0) return res.status(400).json({ error: 'Já existe uma assinatura ativa para este usuário' });
 
@@ -332,18 +403,11 @@ router.post('/credit-card', requireOwner, async (req, res) =>
         if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
         const user = users[0];
 
-        const asaasCustomer = await asaasService.findOrCreateCustomer({
-            name: creditCardHolderInfo.name || user.name,
-            email: creditCardHolderInfo.email || user.email,
-            cpfCnpj: creditCardHolderInfo.cpfCnpj,
-            phone: creditCardHolderInfo.phone,
-            mobilePhone: creditCardHolderInfo.mobilePhone,
-            postalCode: creditCardHolderInfo.postalCode,
-            address: creditCardHolderInfo.address,
-            addressNumber: creditCardHolderInfo.addressNumber,
-            province: creditCardHolderInfo.province,
-            externalReference: `user_${ownerId}`
-        });
+        // Titular do cartão pode ser outra pessoa (nome e CPF dele); o email é sempre o da conta do dono
+        const { payer: holder, error: holderError } = buildPayer(creditCardHolderInfo, user, 'holder');
+        if (holderError) return res.status(400).json({ error: holderError, code: 'INVALID_PAYER' });
+
+        const asaasCustomer = await resolveAsaasCustomer(connection, ownerId, holder);
 
         const nextDueDate = new Date();
         nextDueDate.setDate(nextDueDate.getDate() + 1);
@@ -360,11 +424,13 @@ router.post('/credit-card', requireOwner, async (req, res) =>
                 remoteIp: req.ip
             },
             creditCard,
-            creditCardHolderInfo
+            holder
         );
 
         const subscriptionId = await saveSubscription(connection, ownerId, { planId: plan.id, asaasSubscriptionId: asaasSubscription.id, asaasCustomerId: asaasCustomer.id,
             status: 'ACTIVE', nextPaymentAt: formattedDueDate });
+
+        await saveAccountDocument(ownerId, holder.cpfCnpj, connection);
 
         await connection.commit();
 
@@ -380,7 +446,7 @@ router.post('/credit-card', requireOwner, async (req, res) =>
     {
         await connection.rollback();
         console.error('Create credit card subscription error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao criar assinatura com cartão' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao criar assinatura com cartão', ...(error.code && { code: error.code }) });
     } 
     finally 
     {
@@ -471,20 +537,13 @@ router.post('/convert-trial', requireOwner, async (req, res) =>
         const [users] = await connection.query('SELECT * FROM users WHERE id = ?', [ownerId]);
         const user = users[0];
 
-        const customerInfo = customerData || creditCardHolderInfo || {};
+        const isCard = billingType === 'CREDIT_CARD';
+        if (isCard && (!creditCard || !creditCardHolderInfo)) return res.status(400).json({ error: 'Dados do cartão e titular são obrigatórios' });
 
-        const asaasCustomer = await asaasService.findOrCreateCustomer({
-            name: customerInfo.name || user.name,
-            email: customerInfo.email || user.email,
-            cpfCnpj: customerInfo.cpfCnpj,
-            phone: customerInfo.phone,
-            mobilePhone: customerInfo.mobilePhone,
-            postalCode: customerInfo.postalCode,
-            address: customerInfo.address,
-            addressNumber: customerInfo.addressNumber,
-            province: customerInfo.province,
-            externalReference: `user_${ownerId}`
-        });
+        const { payer, error: payerError } = buildPayer(isCard ? creditCardHolderInfo : customerData, user, isCard ? 'holder' : 'payer');
+        if (payerError) return res.status(400).json({ error: payerError, code: 'INVALID_PAYER' });
+
+        const asaasCustomer = await resolveAsaasCustomer(connection, ownerId, payer);
 
         const nextDueDate = new Date();
         nextDueDate.setDate(nextDueDate.getDate() + (billingType === 'CREDIT_CARD' ? 1 : 5));
@@ -494,8 +553,6 @@ router.post('/convert-trial', requireOwner, async (req, res) =>
 
         if (billingType === 'CREDIT_CARD') 
         {
-            if (!creditCard || !creditCardHolderInfo) return res.status(400).json({ error: 'Dados do cartão e titular são obrigatórios' });
-
             asaasSubscription = await asaasService.createSubscriptionWithCreditCard(
                 {
                     customer: asaasCustomer.id,
@@ -507,7 +564,7 @@ router.post('/convert-trial', requireOwner, async (req, res) =>
                     remoteIp: req.ip
                 },
                 creditCard,
-                creditCardHolderInfo
+                payer
             );
         } 
         else 
@@ -526,6 +583,8 @@ router.post('/convert-trial', requireOwner, async (req, res) =>
         const newStatus = billingType === 'CREDIT_CARD' ? 'ACTIVE' : 'PENDING';
         await connection.query(`UPDATE subscriptions SET asaasSubscriptionId = ?, asaasCustomerId = ?, status = ?, nextPaymentAt = ?, trialEndsAt = NULL WHERE id = ?`,
             [asaasSubscription.id, asaasCustomer.id, newStatus, formattedDueDate, subscription.id]);
+
+        await saveAccountDocument(ownerId, payer.cpfCnpj, connection);
 
         await connection.commit();
 
@@ -563,7 +622,7 @@ router.post('/convert-trial', requireOwner, async (req, res) =>
     {
         await connection.rollback();
         console.error('Convert trial error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao converter período de teste' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao converter período de teste', ...(error.code && { code: error.code }) });
     } 
     finally 
     {
@@ -677,7 +736,7 @@ router.put('/me', requireOwner, async (req, res) =>
     {
         await connection.rollback();
         console.error('Update subscription error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao atualizar assinatura' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao atualizar assinatura', ...(error.code && { code: error.code }) });
     } 
     finally 
     {
@@ -696,18 +755,24 @@ router.put('/me/credit-card', requireOwner, async (req, res) =>
 
         if (!creditCard || !creditCardHolderInfo)  return res.status(400).json({ error: 'Dados do cartão e do titular são obrigatórios' });
 
+        const [users] = await pool.query('SELECT email FROM users WHERE id = ?', [ownerId]);
+        const { payer: holder, error: holderError } = buildPayer(creditCardHolderInfo, users[0], 'holder');
+        if (holderError) return res.status(400).json({ error: holderError, code: 'INVALID_PAYER' });
+
         const [subscriptions] = await pool.query('SELECT * FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL ORDER BY id DESC LIMIT 1', [ownerId]);
         if (subscriptions.length === 0) return res.status(404).json({ error: 'Nenhuma assinatura encontrada' });
         const subscription = subscriptions[0];
 
-        await asaasService.updateSubscriptionCreditCard(subscription.asaasSubscriptionId, creditCard, creditCardHolderInfo);
+        await resolveAsaasCustomer(pool, ownerId, holder);
+        await asaasService.updateSubscriptionCreditCard(subscription.asaasSubscriptionId, creditCard, holder);
+        await saveAccountDocument(ownerId, holder.cpfCnpj);
 
         res.json({ message: 'Cartão atualizado com sucesso' });
     } 
     catch (error) 
     {
         console.error('Update credit card error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao atualizar cartão' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao atualizar cartão', ...(error.code && { code: error.code }) });
     }
 });
 
@@ -738,7 +803,7 @@ router.delete('/me', requireOwner, async (req, res) =>
     {
         await connection.rollback();
         console.error('Cancel subscription error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao cancelar assinatura' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao cancelar assinatura', ...(error.code && { code: error.code }) });
     } 
     finally 
     {
@@ -756,7 +821,8 @@ router.get('/me/payments', requireOwner, async (req, res) =>
         const { status, offset, limit } = req.query;
 
         const [subscriptions] = await pool.query('SELECT * FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL ORDER BY id DESC LIMIT 1', [ownerId]);
-        if (subscriptions.length === 0) return res.json({ data: [], hasMore: false, totalCount: 0 });
+        // Sem assinatura no Asaas (nunca assinou, trial ou plano concedido pelo admin) não há cobrança: o front mostra o motivo
+        if (subscriptions.length === 0) return res.json({ data: [], hasMore: false, totalCount: 0, reason: 'NO_ASAAS_SUBSCRIPTION' });
         const subscription = subscriptions[0];
 
         const payments = await asaasService.listSubscriptionPayments(subscription.asaasSubscriptionId, { status, offset, limit });
@@ -766,7 +832,7 @@ router.get('/me/payments', requireOwner, async (req, res) =>
     catch (error) 
     {
         console.error('List payments error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao listar cobranças' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao listar cobranças', ...(error.code && { code: error.code }) });
     }
 });
 
@@ -801,7 +867,7 @@ router.get('/payments/:paymentId', requireOwner, async (req, res) =>
     catch (error) 
     {
         console.error('Get payment error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Erro ao buscar cobrança' });
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao buscar cobrança', ...(error.code && { code: error.code }) });
     }
 });
 
