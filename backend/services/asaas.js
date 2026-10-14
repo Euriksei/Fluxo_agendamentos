@@ -1,15 +1,51 @@
-const ASAAS_API_URL = process.env.ASAAS_API_URL || 'https://api-sandbox.asaas.com/v3';
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+const SANDBOX_URL = 'https://api-sandbox.asaas.com/v3';
+const UNAVAILABLE_MESSAGE = 'Serviço de pagamento indisponível no momento';
 
-class AsaasService 
+// Lido a cada request (não no import): o dotenv do app.js roda depois dos imports, e o ambiente nunca fica preso ao valor do boot.
+// Em produção não há padrão: sem ASAAS_API_URL a chamada falha em vez de cair silenciosamente no sandbox.
+export const getAsaasConfig = () =>
 {
-    constructor() { this.baseUrl = ASAAS_API_URL; this.apiKey = ASAAS_API_KEY; }
+    const isProduction = process.env.NODE_ENV === 'production';
+    const url = (process.env.ASAAS_API_URL || (isProduction ? '' : SANDBOX_URL)).trim().replace(/\/+$/, '');
+    return { url, apiKey: process.env.ASAAS_API_KEY || '', isProduction };
+};
 
-    async request(endpoint, options = {}) 
+// Para o log de boot: só o ambiente, nunca a chave
+export const describeAsaasEnvironment = () =>
+{
+    const { url, apiKey } = getAsaasConfig();
+    if (!url) return 'Asaas: NÃO CONFIGURADO (ASAAS_API_URL vazia em produção)';
+
+    let host = '';
+    try { host = new URL(url).host; } catch { return 'Asaas: ASAAS_API_URL inválida'; }
+
+    const env = host === 'api-sandbox.asaas.com' ? 'SANDBOX' : host === 'api.asaas.com' ? 'PRODUÇÃO (api.asaas.com)' : `URL PERSONALIZADA (${host})`;
+    return `Asaas: ${env}${apiKey ? '' : ' - ASAAS_API_KEY vazia'}`;
+};
+
+const unavailable = () => { const error = new Error(UNAVAILABLE_MESSAGE); error.status = 502; return error; };
+
+class AsaasService
+{
+    async request(endpoint, options = {})
     {
-        const url = `${this.baseUrl}${endpoint}`;
-        
-        const config = { headers: { 'Content-Type': 'application/json', 'access_token': this.apiKey, ...options.headers }, ...options };
+        const { url: baseUrl, apiKey, isProduction } = getAsaasConfig();
+
+        if (!baseUrl)
+        {
+            console.error('[asaas] ASAAS_API_URL não definida em produção: chamada bloqueada (sem fallback para o sandbox).');
+            throw unavailable();
+        }
+
+        if (!apiKey)
+        {
+            console.error(`[asaas] ASAAS_API_KEY vazia${isProduction ? ' em produção' : ''}: chamada bloqueada.`);
+            throw unavailable();
+        }
+
+        const url = `${baseUrl}${endpoint}`;
+
+        const config = { headers: { 'Content-Type': 'application/json', 'access_token': apiKey, ...options.headers }, ...options };
 
         try 
         {
@@ -20,7 +56,7 @@ class AsaasService
             {
                 // 401/403 do Asaas é problema da nossa chave: não repassar (o front trata 401 como sessão expirada e desloga)
                 const isAuthError = response.status === 401 || response.status === 403;
-                const error = new Error(isAuthError ? 'Serviço de pagamento indisponível no momento' : (data.errors?.[0]?.description || 'Erro na API ASAAS'));
+                const error = new Error(isAuthError ? UNAVAILABLE_MESSAGE : (data.errors?.[0]?.description || 'Erro na API ASAAS'));
                 error.status = isAuthError ? 502 : response.status;
                 error.data = data;
                 throw error;

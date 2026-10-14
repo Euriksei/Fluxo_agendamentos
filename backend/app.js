@@ -16,6 +16,8 @@ import flowsRoutes from './routes/flows.js';
 import plansRoutes from './routes/plans.js';
 import subscriptionsRoutes from './routes/subscriptions.js';
 
+import { describeAsaasEnvironment } from './services/asaas.js';
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -119,4 +121,5 @@ app.listen(PORT, () =>
     console.log(`\n🚀 Servidor rodando na porta ${PORT}`);
     console.log(`📍 URL: http://localhost:${PORT}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+    console.log(`💳 ${describeAsaasEnvironment()}`);
 });
