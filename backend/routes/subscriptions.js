@@ -843,7 +843,7 @@ router.get('/payments/:paymentId', requireOwner, async (req, res) =>
         const { paymentId } = req.params;
         const ownerId = await getOwnerId(req.user.id);
 
-        // Só cobranças da assinatura do próprio dono (evita ler cobrança de outra barbearia pelo id)
+        // Só cobranças da assinatura do próprio dono (evita ler cobrança de outro negócio pelo id)
         const [subscriptions] = await pool.query('SELECT asaasSubscriptionId FROM subscriptions WHERE userId = ? AND asaasSubscriptionId IS NOT NULL', [ownerId]);
         const payment = subscriptions.length > 0 ? await asaasService.getPayment(paymentId) : null;
         if (!payment || !subscriptions.some(sub => sub.asaasSubscriptionId === payment.subscription)) return res.status(404).json({ error: 'Cobrança não encontrada' });

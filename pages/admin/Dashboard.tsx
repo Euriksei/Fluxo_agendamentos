@@ -187,7 +187,7 @@ export default function AdminDashboard()
                     (
                         <div className="text-center py-8 text-brand-gray">
                             <Building2 size={40} className="mx-auto mb-3 opacity-50" />
-                            <p>Nenhuma barbearia cadastrada</p>
+                            <p>Nenhum negócio cadastrado</p>
                         </div>
                     )}
                 </div>
@@ -209,7 +209,7 @@ export default function AdminDashboard()
                         <table className="w-full table-cards">
                             <thead>
                                 <tr className="text-left border-b border-red-500/20">
-                                    <th className="text-brand-gray text-sm font-medium pb-3">Barbearia</th>
+                                    <th className="text-brand-gray text-sm font-medium pb-3">Negócio</th>
                                     <th className="text-brand-gray text-sm font-medium pb-3">Plano</th>
                                     <th className="text-brand-gray text-sm font-medium pb-3">Vencimento</th>
                                     <th className="text-brand-gray text-sm font-medium pb-3">Valor</th>
@@ -218,7 +218,7 @@ export default function AdminDashboard()
                             <tbody>
                                 {overdueSubscriptions.map(sub => (
                                     <tr key={sub.id} className="border-b border-red-500/10">
-                                        <td data-label="Barbearia" className="py-3">
+                                        <td data-label="Negócio" className="py-3">
                                             <div>
                                                 <p className="text-white text-sm">{sub.shop || sub.ownerName}</p>
                                                 <p className="text-brand-gray text-xs">{sub.email}</p>

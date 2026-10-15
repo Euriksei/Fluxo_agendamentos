@@ -26,9 +26,9 @@ export default defineConfig(({ mode }) =>
                 includeAssets: ['favicon.ico'],
                 //includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
                 manifest: {
-                    name: 'Fluxo - Gestão de Barbearias',
+                    name: 'Fluxo - Agendamento e Gestão',
                     short_name: 'Fluxo',
-                    description: 'Aplicativo de gestão de barbearias com agendamento e finanças.',
+                    description: 'Agendamento online e gestão financeira para o seu negócio.',
                     theme_color: '#ffffff',
                     background_color: '#ffffff',
                     display: 'standalone',

@@ -90,7 +90,7 @@ class AsaasService
         }
     }
 
-    // Busca por CPF foi removida de propósito: o mesmo CPF pode existir em outro cadastro (outra barbearia ou CPF digitado errado) e a
+    // Busca por CPF foi removida de propósito: o mesmo CPF pode existir em outro cadastro (outro negócio ou CPF digitado errado) e a
     // cobrança ficaria presa ao cliente de outro usuário. O cliente do dono é achado pelo id salvo ou pelo externalReference user_<id>.
     async findCustomerByExternalReference(externalReference)
     {

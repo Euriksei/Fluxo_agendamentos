@@ -35,7 +35,7 @@ export default function FeatureGate({ feature, children }: FeatureGateProps)
             <h1 id="feature-gate-title" className="text-2xl font-bold text-white mb-2">Recurso fora do seu plano</h1>
             <p className="text-brand-gray mb-8">
                 <strong className="text-white">{nome}</strong> faz parte dos planos pagos.{' '}
-                {isEmployee ? 'Peça ao dono da barbearia para liberar este recurso.' : 'Faça upgrade para liberar e continuar crescendo sua barbearia.'}
+                {isEmployee ? 'Peça ao responsável pelo negócio para liberar este recurso.' : 'Faça upgrade para liberar e continuar crescendo seu negócio.'}
             </p>
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
                 {/* Employees cannot open Assinatura (owner only), so no upgrade CTA for them */}

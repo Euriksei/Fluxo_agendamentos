@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, DollarSign, Users, Smartphone, Clock, BarChart3, ShieldCheck, Scissors } from 'lucide-react';
+import { Calendar, DollarSign, Users, Smartphone, Clock, BarChart3, ShieldCheck, ClipboardList } from 'lucide-react';
 
 const Features: React.FC = () =>
 {
@@ -40,7 +40,7 @@ const Features: React.FC = () =>
             description: "O sistema mostra apenas os horários livres, evitando conflitos e agendamentos duplos."
         },
         {
-            icon: <Scissors className="text-white" size={24} />,
+            icon: <ClipboardList className="text-white" size={24} />,
             title: "Menu de Serviços",
             description: "O cliente vê o preço, a duração e escolhe o profissional de sua preferência."
         },
@@ -59,7 +59,7 @@ const Features: React.FC = () =>
                         Uma plataforma, <span className="gradient-text">múltiplas soluções</span>
                     </h2>
                     <p className="text-gray-400 max-w-2xl mx-auto">
-                        O Fluxo conecta a gestão profissional da sua barbearia com a comodidade que seu cliente exige.
+                        O Fluxo conecta a gestão profissional do seu negócio com a comodidade que seu cliente exige.
                     </p>
                 </div>
 

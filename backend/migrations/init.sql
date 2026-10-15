@@ -184,5 +184,5 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 INSERT INTO plans (name, slug, description, price, maxEmployees, features) VALUES
 ( 'Grátis', 'free', 'Para usuários com assinatura congelada', 0, 0, '["services", "agendas"]' ),
 ( 'Básico', 'basic', 'Ideal para profissionais autônomos', 2990, 0, '["services", "agendas", "appointments"]' ),
-( 'Profissional', 'professional', 'Para barbearias em crescimento', 6990, 4, '["services", "agendas", "appointments", "employees"]' ),
-( 'Premium', 'premium', 'Para barbearias estabelecidas', 9990, 9, '["services", "agendas", "appointments", "employees", "flows"]' );
+( 'Profissional', 'professional', 'Para negócios em crescimento', 6990, 4, '["services", "agendas", "appointments", "employees"]' ),
+( 'Premium', 'premium', 'Para negócios estabelecidos', 9990, 9, '["services", "agendas", "appointments", "employees", "flows"]' );

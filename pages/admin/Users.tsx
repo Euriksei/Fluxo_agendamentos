@@ -22,7 +22,7 @@ const STATUS_CONFIG =
     NONE: { label: 'Sem assinatura', color: 'bg-gray-500/20 text-gray-400' }
 };
 
-const MODAL_TITLES = { edit: 'Editar Barbearia', password: 'Resetar Senha', details: 'Detalhes da Barbearia', plan: 'Alterar Plano' };
+const MODAL_TITLES = { edit: 'Editar Negócio', password: 'Resetar Senha', details: 'Detalhes do Negócio', plan: 'Alterar Plano' };
 
 const EMPTY_PLAN_FORM = { planId: '', status: '', nextPaymentAt: '' };
 
@@ -223,12 +223,12 @@ export default function Users()
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Buscar..."
-                        className="pl-10 w-full sm:w-64" aria-label="Buscar barbearias" inputMode="search" enterKeyHint="search"
+                        className="pl-10 w-full sm:w-64" aria-label="Buscar negócios" inputMode="search" enterKeyHint="search"
                     />
                 </div>
             </div>
 
-            {/* Lista no celular: um card por barbearia, ações com rótulo numa linha própria */}
+            {/* Lista no celular: um card por negócio, ações com rótulo numa linha própria */}
             <ul className="space-y-3 md:hidden">
                 {filteredShops.map(shop => {
                     const statusConfig = STATUS_CONFIG[shop.subscriptionStatus || 'NONE'] || STATUS_CONFIG.PENDING;
@@ -288,7 +288,7 @@ export default function Users()
 
             {filteredShops.length === 0 && (
                 <div className="rounded-xl bg-brand-dark py-12 text-center text-brand-gray md:hidden">
-                    Nenhuma barbearia encontrada
+                    Nenhum negócio encontrado
                 </div>
             )}
 
@@ -372,7 +372,7 @@ export default function Users()
 
                 {filteredShops.length === 0 && (
                     <div className="text-center py-12 text-brand-gray">
-                        Nenhuma barbearia encontrada
+                        Nenhum negócio encontrado
                     </div>
                 )}
             </div>
@@ -396,7 +396,7 @@ export default function Users()
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-brand-gray mb-1">Nome da Barbearia</label>
+                                        <label className="block text-sm text-brand-gray mb-1">Nome do Negócio</label>
                                         <Input
                                             value={formData.shop}
                                             onChange={e => setFormData({ ...formData, shop: e.target.value })}
@@ -531,7 +531,7 @@ export default function Users()
                                                 <Input id="plan-date" type="date" min={hojeLocal()} value={planForm.nextPaymentAt} aria-describedby="plan-date-hint"
                                                     onChange={e => setPlanForm({ ...planForm, nextPaymentAt: e.target.value })} fullWidth />
                                                 <p id="plan-date-hint" className="mt-1 text-xs text-brand-gray">
-                                                    Vale até o fim desse dia; depois a barbearia volta para o plano grátis. Vazio = sem vencimento.
+                                                    Vale até o fim desse dia; depois o negócio volta para o plano grátis. Vazio = sem vencimento.
                                                 </p>
                                             </>
                                         ) : (

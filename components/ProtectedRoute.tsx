@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { notifyInfo } from '../hooks/useApi';
 
-export const OWNER_ONLY_MESSAGE = 'Apenas o dono da barbearia pode acessar assinatura, equipe, caixa e serviços.';
+export const OWNER_ONLY_MESSAGE = 'Apenas o responsável pelo negócio pode acessar assinatura, equipe, caixa e serviços.';
 
 let lastOwnerNotice = 0;
 

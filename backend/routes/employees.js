@@ -17,7 +17,7 @@ router.get('/barber/:barberId', requireBookingAvailable(req => req.params.barber
         const { barberId } = req.params;
 
         const [owner] = await pool.query(`SELECT id, name, userId FROM users WHERE id = ?`, [barberId]);
-        if (owner.length === 0) return res.status(404).json({ error: 'Barbearia não encontrada' });
+        if (owner.length === 0) return res.status(404).json({ error: 'Negócio não encontrado' });
 
         const ownerId = owner[0].userId || owner[0].id;
 

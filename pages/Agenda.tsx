@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth, useAgendas, useAppointments, useEmployees } from '@/contexts';
 
-import { Calendar, List, Clock, User, ChevronLeft, ChevronRight, Check, X, Scissors, Move, GripVertical } from 'lucide-react';
+import { Calendar, List, Clock, User, ChevronLeft, ChevronRight, Check, X, Move, GripVertical } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -605,7 +605,7 @@ export default function Agenda()
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Scissors size={20} className="text-brand-gray shrink-0" aria-hidden="true" />
+                        <User size={20} className="text-brand-gray shrink-0" aria-hidden="true" />
                         <p className="text-white">{appointmentSelecionado.barberName}</p>
                     </div>
 

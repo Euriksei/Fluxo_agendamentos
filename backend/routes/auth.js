@@ -144,7 +144,7 @@ router.post('/register', async (req, res) =>
 
     try
     {
-        // O cadastro público sempre cria o dono da barbearia; o role do body é ignorado (funcionários são criados pelo dono)
+        // O cadastro público sempre cria o dono do negócio; o role do body é ignorado (funcionários são criados pelo dono)
         const { name, shop, email, password, confPassword } = req.body;
         const safeRole = 'BARBER';
 

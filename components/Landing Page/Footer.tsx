@@ -14,7 +14,7 @@ const Footer: React.FC = () =>
                         <Logo variant="full" className="mb-4" />
 
                         <p className="text-gray-500 text-sm mb-4">
-                            A plataforma completa para gestão inteligente de barbearias e salões de beleza.
+                            A plataforma completa para gestão inteligente de negócios que trabalham com agendamento: salões, clínicas, estúdios e consultórios.
                         </p>
                         <div className="flex gap-4">
                             <a href="https://www.instagram.com/fluxo_1000/" target="_blank" rel="noopener noreferrer" aria-label="Instagram do Fluxo"

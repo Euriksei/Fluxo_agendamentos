@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useBarber, useServices, useAgendas, useAppointments } from '@/contexts';
 
-import { Calendar, Clock, Check, ChevronLeft, ChevronRight, Scissors, User, Users, Mail, Phone, SearchX, WifiOff, RotateCw, CalendarOff } from 'lucide-react';
+import { Calendar, Clock, Check, ChevronLeft, ChevronRight, ClipboardList, User, Users, Mail, Phone, SearchX, WifiOff, RotateCw, CalendarOff } from 'lucide-react';
 
 import Logo from '@/components/Logo';
 
@@ -369,13 +369,13 @@ export default function Agendar()
                         </div>
 
                         <h1 className="text-2xl font-bold text-white mb-2">
-                            {notFound ? 'Barbearia não encontrada' : unavailable ? 'Agendamento indisponível no momento' : 'Não foi possível carregar'}
+                            {notFound ? 'Página não encontrada' : unavailable ? 'Agendamento indisponível no momento' : 'Não foi possível carregar'}
                         </h1>
                         <p className="text-brand-gray text-sm mb-8">
                             {notFound 
-                                ? 'O link de agendamento que você acessou não existe ou foi desativado. Confira o endereço com a barbearia.' 
+                                ? 'O link de agendamento que você acessou não existe ou foi desativado. Confira o endereço com o estabelecimento.' 
                                 : unavailable
-                                ? 'Esta barbearia não está recebendo agendamentos online agora. Entre em contato diretamente com ela ou tente mais tarde.'
+                                ? 'Este estabelecimento não está recebendo agendamentos online agora. Entre em contato diretamente com ele ou tente mais tarde.'
                                 : 'Verifique sua conexão com a internet e tente novamente.'}
                         </p>
 
@@ -493,7 +493,7 @@ export default function Agendar()
                         </button>
 
                         <div className="flex items-center gap-3 mb-6 p-3 bg-brand-purple/10 rounded-lg border border-brand-purple/20">
-                            <Scissors size={18} className="text-brand-purple" />
+                            <ClipboardList size={18} className="text-brand-purple" aria-hidden="true" />
                             <div className="flex-1">
                                 <p className="text-white font-medium">{selectedService?.name}</p>
                                 <p className="text-brand-gray text-sm">{selectedService?.duration} min • {formatarMoeda(selectedService?.value)}</p>

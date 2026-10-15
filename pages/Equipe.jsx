@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEmployees, useAgendas, useServices } from '@/contexts';
 
-import { Users, Plus, Edit, Trash2, Calendar, Clock, Scissors, ChevronRight, ChevronLeft, User, Mail, Lock, Coffee, Eye, EyeOff, X, Check } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Calendar, Clock, ClipboardList, ChevronRight, ChevronLeft, User, Mail, Lock, Coffee, Eye, EyeOff, X, Check } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -407,7 +407,7 @@ export default function Equipe()
                     <div className="bg-brand-dark rounded-lg p-4 sm:p-6">
                         <div className="flex justify-between items-center gap-3 mb-4">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <Scissors size={20} className="text-brand-purple" aria-hidden="true" /> Serviços
+                                <ClipboardList size={20} className="text-brand-purple" aria-hidden="true" /> Serviços
                             </h3>
                             <Button onClick={openModalServices} variant="outline" size="sm" >
                                 <Edit size={14} aria-hidden="true" /> Gerenciar
@@ -619,7 +619,7 @@ export default function Equipe()
                     :
                     (
                         <div className="text-center py-8">
-                            <Scissors size={48} className="mx-auto text-brand-gray mb-4" aria-hidden="true" />
+                            <ClipboardList size={48} className="mx-auto text-brand-gray mb-4" aria-hidden="true" />
                             <p className="text-brand-gray">Nenhum serviço cadastrado</p>
                             <p className="text-brand-gray text-sm mt-1">
                                 Cadastre serviços na página de Serviços primeiro.

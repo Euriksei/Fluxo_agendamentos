@@ -160,7 +160,7 @@ export default function Servicos()
                     <div>
                         <label htmlFor="servico-nome" className="block text-sm text-brand-gray mb-1">Nome</label>
                         <Input id="servico-nome" type="text" autoComplete="off" autoCapitalize="sentences" value={form.name} onChange={e => handleChange('name', e.target.value)}
-                            placeholder="Ex: Corte Degradê" fullWidth required />
+                            placeholder="Ex: Consulta, Sessão de 60 min" fullWidth required />
                     </div>
 
                     <div>

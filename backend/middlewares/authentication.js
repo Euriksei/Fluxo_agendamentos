@@ -46,9 +46,9 @@ export const requireAdmin = (req, res, next) =>
     next();
 };
 
-// Ações do dono da barbearia (assinatura, cadastro de funcionários): funcionário não pode
+// Ações do dono do negócio (assinatura, cadastro de funcionários): funcionário não pode
 export const requireOwner = (req, res, next) =>
 {
-    if (req.user.role === 'EMPLOYEE') return res.status(403).json({ error: 'Apenas o dono da barbearia pode realizar esta ação', code: 'OWNER_ONLY' });
+    if (req.user.role === 'EMPLOYEE') return res.status(403).json({ error: 'Apenas o dono do negócio pode realizar esta ação', code: 'OWNER_ONLY' });
     next();
 };

@@ -17,7 +17,7 @@ const Hero: React.FC = () =>
                     <div className="w-full lg:w-1/2 text-center lg:text-left">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-6">
                             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-xs font-medium text-brand-gray uppercase tracking-wider">O sistema nº 1 para Barbearias</span>
+                            <span className="text-xs font-medium text-brand-gray uppercase tracking-wider">Agendamento e gestão para o seu negócio</span>
                         </div>
                         
                         <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-6">
@@ -67,7 +67,7 @@ const Hero: React.FC = () =>
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-white">Novo Agendamento</p>
-                                            <p className="text-xs text-gray-400">Corte + Barba • 14:00</p>
+                                            <p className="text-xs text-gray-400">Sessão de 60 min • 14:00</p>
                                         </div>
                                     </div>
                                     <span className="text-green-400 font-bold text-sm">+ R$ 60,00</span>

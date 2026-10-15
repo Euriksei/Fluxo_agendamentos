@@ -8,14 +8,14 @@ const HowItWorks: React.FC = () =>
         {
             id: 1,
             icon: <UserPlus size={32} />,
-            title: "Cadastre sua Barbearia",
+            title: "Cadastre seu Negócio",
             text: "Crie sua conta em segundos. Adicione seus colaboradores, defina seus serviços e horários de funcionamento."
         },
         {
             id: 2,
             icon: <QrCode size={32} />,
             title: "Compartilhe seu Link",
-            text: "Envie o link ou QR Code exclusivo da sua barbearia para seus clientes pelo WhatsApp ou outras redes sociais."
+            text: "Envie o link ou QR Code exclusivo do seu negócio para seus clientes pelo WhatsApp ou outras redes sociais."
         },
         {
             id: 3,

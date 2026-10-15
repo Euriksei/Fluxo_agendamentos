@@ -70,7 +70,7 @@ export function useApi()
             {
                 // Keep the HTTP status so callers can tell a 404 from a network failure (TypeError, no status).
                 // OWNER_ONLY: an employee hit an owner action (assinatura, cobranças, equipe, caixa, serviços)
-                const message = data.code === 'OWNER_ONLY' ? 'Apenas o dono da barbearia pode fazer isso. Fale com o responsável pela barbearia.' : data.error;
+                const message = data.code === 'OWNER_ONLY' ? 'Apenas o responsável pelo negócio pode fazer isso. Fale com ele para liberar.' : data.error;
                 const httpError = new Error(message || 'Erro na requisição');
                 httpError.status = response.status;
                 httpError.data = data;

@@ -15,7 +15,7 @@ const VALID_STATUSES = ['ACTIVE', 'PENDING', 'TRIAL', 'OVERDUE', 'SUSPENDED', 'C
 // 'YYYY-MM-DD' de um dia que existe no calendário
 const isValidDateString = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && toLocalDateString(new Date(value + 'T00:00:00')) === value;
 
-// Barbearias (donos) com a assinatura mais recente: a mesma forma serve para a lista e para a linha atualizada após trocar o plano
+// Negócios (donos) com a assinatura mais recente: a mesma forma serve para a lista e para a linha atualizada após trocar o plano
 const BARBERSHOPS_QUERY = `SELECT u.id, u.name, u.shop, u.email, u.role, u.created_at, s.id as subscriptionId, s.status as subscriptionStatus, s.nextPaymentAt, s.asaasSubscriptionId,
     s.trialEndsAt, (s.id IS NOT NULL AND s.asaasSubscriptionId IS NULL AND s.trialEndsAt IS NULL) as grantedByAdmin,
     p.id as planId, p.name as planName, p.slug as planSlug, (SELECT COUNT(*) FROM users WHERE userId = u.id) as employeeCount FROM users u
@@ -72,7 +72,7 @@ router.get('/barbershops', async (req, res) =>
     catch (error) 
     {
         console.error('Get barbershops error:', error);
-        res.status(500).json({ error: 'Erro ao buscar barbearias' });
+        res.status(500).json({ error: 'Erro ao buscar negócios' });
     }
 });
 
@@ -104,7 +104,7 @@ router.get('/barbershops/:id', async (req, res) => {
         `, [id]);
 
         if (owners.length === 0) {
-            return res.status(404).json({ error: 'Barbearia não encontrada' });
+            return res.status(404).json({ error: 'Negócio não encontrado' });
         }
 
         const owner = owners[0];
@@ -122,7 +122,7 @@ router.get('/barbershops/:id', async (req, res) => {
         });
     } catch (error) {
         console.error('Get barbershop error:', error);
-        res.status(500).json({ error: 'Erro ao buscar barbearia' });
+        res.status(500).json({ error: 'Erro ao buscar negócio' });
     }
 });
 
@@ -195,7 +195,7 @@ router.post('/users/:id/reset-password', async (req, res) =>
     }
 });
 
-// Plano de qualquer barbearia (dono), com ou sem assinatura. Sem assinatura cria uma "concedida pelo admin" (sem vínculo com o Asaas).
+// Plano de qualquer negócio (dono), com ou sem assinatura. Sem assinatura cria uma "concedida pelo admin" (sem vínculo com o Asaas).
 // Não mexe no Asaas: se houver cobrança vinculada, o valor cobrado continua o do plano antigo (o front mostra o aviso).
 router.put('/users/:id/plan', async (req, res) =>
 {
@@ -214,7 +214,7 @@ router.put('/users/:id/plan', async (req, res) =>
 
         const [users] = await connection.query('SELECT id, role, userId FROM users WHERE id = ?', [userId]);
         if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
-        if (users[0].role !== 'BARBER' || users[0].userId !== null) return res.status(400).json({ error: 'Só é possível alterar o plano do dono de uma barbearia' });
+        if (users[0].role !== 'BARBER' || users[0].userId !== null) return res.status(400).json({ error: 'Só é possível alterar o plano do dono de um negócio' });
 
         const [plans] = await connection.query('SELECT id, name, slug, maxEmployees, isActive FROM plans WHERE id = ?', [planId]);
         if (plans.length === 0) return res.status(404).json({ error: 'Plano não encontrado' });
@@ -268,7 +268,7 @@ router.put('/users/:id/plan', async (req, res) =>
             warnings.push(`${excess} funcionário${excess > 1 ? 's' : ''} acima do limite do plano ${plan.name} (máximo ${plan.maxEmployees})`);
         }
 
-        if (newStatus !== 'ACTIVE' && newStatus !== 'TRIAL') warnings.push(`Com status ${newStatus} a barbearia fica no plano grátis até a assinatura voltar a Ativo`);
+        if (newStatus !== 'ACTIVE' && newStatus !== 'TRIAL') warnings.push(`Com status ${newStatus} o negócio fica no plano grátis até a assinatura voltar a Ativo`);
 
         await connection.commit();
 

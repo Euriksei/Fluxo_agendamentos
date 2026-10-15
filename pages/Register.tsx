@@ -77,7 +77,7 @@ export default function Register()
 
                             <div className="grid gap-2">
                                 <Label htmlFor="shop">Nome do Negócio</Label>
-                                <Input id="shop" name="shop" type="text" autoComplete="organization" maxLength={30} required value={form.shop} onChange={handleChange} placeholder="Barber Shop" />
+                                <Input id="shop" name="shop" type="text" autoComplete="organization" maxLength={30} required value={form.shop} onChange={handleChange} placeholder="Studio Aurora" />
                             </div>
 
                             <div className="grid gap-2">

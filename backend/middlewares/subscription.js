@@ -110,7 +110,7 @@ export async function resolveSubscription(ownerId)
     }
 }
 
-// Usado pelas rotas públicas (agendamento): o recurso depende do plano do dono da barbearia. null = usuário não existe
+// Usado pelas rotas públicas (agendamento): o recurso depende do plano do dono do negócio. null = usuário não existe
 export async function ownerHasFeature(userId, featureName) 
 {
     const ownerId = await getOwnerId(userId);
@@ -213,7 +213,7 @@ export const requireBookingAvailable = (resolveUserId) =>
             if (userId == null) return next();
 
             const available = await ownerHasFeature(userId, 'appointments');
-            if (available === false) return res.status(403).json({ error: 'Agendamento online indisponível para esta barbearia', code: 'BOOKING_UNAVAILABLE' });
+            if (available === false) return res.status(403).json({ error: 'Agendamento online indisponível para este negócio', code: 'BOOKING_UNAVAILABLE' });
 
             next();
         } 

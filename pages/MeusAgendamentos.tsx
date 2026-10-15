@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppointments } from '@/contexts';
 
-import { Calendar, Clock, Scissors, Search, X } from 'lucide-react';
+import { Calendar, Clock, User, Search, X } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -147,7 +147,7 @@ export default function MeusAgendamentos()
                                     <div className="flex justify-between items-start gap-3 mb-3">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 shrink-0 bg-brand-purple/20 rounded-full flex items-center justify-center">
-                                                <Scissors size={18} className="text-brand-purple" aria-hidden="true" />
+                                                <User size={18} className="text-brand-purple" aria-hidden="true" />
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-white font-medium truncate">{apt.barberName}</p>
